@@ -121,3 +121,33 @@ Il database relazionale contiene **8 tabelle principali** modellate tramite SQLA
 
 - **Supporto JSON Nativo**: L'utilizzo di colonne JSON (`cpe_matches`, `references`, `raw_data`, `matched_cve_ids`) offre flessibilità per schemi dinamici ma limita la capacità di indicizzazione e la velocità di query su database SQLite rispetto a tabelle completamente normalizzate. [CONFIRMED]
 - **Retention Dati Inesistente**: Nessuna procedura automatica o query di pulizia (retention policy) è definita per limitare la crescita delle tabelle `syslog_entries` o `feed_items`. [CONFIRMED]
+
+
+## 4. Target schema (Architecture Gate 2.1)
+
+La sezione precedente descrive lo schema CURRENT rilevato nel repository. Il seguente è lo schema TARGET architetturale; non è stato applicato al database.
+
+### 4.1 Identity and authorization
+- users: id, username/email unique, password_hash, is_active, created_at, updated_at, last_login_at.
+- roles: id, name (ADMIN, ANALYST, READ_ONLY).
+- permissions: id, resource, action.
+- user_roles: user_id, role_id.
+- role_permissions: role_id, permission_id.
+
+### 4.2 Audit and operational control
+- audit_logs: id, timestamp, actor_user_id, action, resource_type, resource_id, outcome, source_ip, request_id, metadata JSON. Append-oriented; no ordinary user delete/update.
+- sync_runs: id, job_type/source, started_at, finished_at, status, attempt, records_read/created/updated/failed, error_summary, request_id. Unique/idempotency key where applicable.
+
+### 4.3 Detection and alerting
+- detections: id, rule_id, event/reference type, severity, confidence, evidence JSON, detected_at, status.
+- alerts: id, alert_type, severity, status (NEW, ACK, INVESTIGATING, CLOSED), asset_id nullable, detection_id nullable, vulnerability_id nullable, created_at, acknowledged_at, closed_at, assigned_to.
+- investigations: id, title, status, owner_user_id, created_at, updated_at, closed_at, notes. Use only if the investigation workflow is implemented; otherwise defer this table.
+
+### 4.4 Risk
+Risk scoring should be persisted as an auditable result rather than only recomputed at presentation time. A target risk_assessments table may contain asset_id, cve_id, score, methodology_version, input_snapshot JSON, calculated_at and calculated_by/job_id. Historical results are retained when the methodology version changes.
+
+### 4.5 Retention and indexing
+Retention policies must be defined before production for syslog_entries, feed_items, audit_logs and sync_runs. PostgreSQL indexes should be designed from measured query patterns. FTS/correlation indexes are implementation tasks and must not be assumed equivalent between SQLite and PostgreSQL.
+
+### 4.6 Implementation rule
+The target tables are introduced through reviewed Alembic migrations only. Existing eight tables remain unchanged until the implementation plan explicitly maps each migration and backfill. No database mutation is part of Architecture Gate 2.1.
