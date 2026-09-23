@@ -20,7 +20,7 @@
  │                                     Secrets Mandatory Enforcement       │
  │                                     Anti-CSRF Tokens                    │
  │                                                                         │
- │  3. ARCHITECTURAL CHANGES       ──► Lifespan Background Scheduler (NVD) │
+ │  3. ARCHITECTURAL CHANGES       ──► Render Cron/Worker per sync NVD/Feed │
  │                                     Async File Ingestion & Parsing      │
  │                                     FTS5 / pg_trgm Index Correlation    │
  │                                                                         │
@@ -72,9 +72,9 @@
 ---
 
 ### Fase 3: Modifiche Architetturali & Scalabilità
-- **TASK-07: Attivazione Background Scheduler nel Lifespan**
+- **TASK-07: Implementazione Sync NVD/Feed tramite Render Cron/Worker**
   - **Priority**: `HIGH` | **Risk**: `MEDIUM` | **Status**: `PLANNED`
-  - **Description**: Registrazione dei job di sincronizzazione automatica periodica NVD e FeedHub nel ciclo `lifespan` di FastAPI. [CONFIRMED: `app/main.py#L13`]
+  - **Description**: Implementazione di job idempotenti NVD/Feed eseguiti da Render Cron/worker singolo, fuori dal `lifespan` del Web Service. Prevedere retry, non-overlap, `sync_runs`, logging e trigger manuale amministrativo.
 
 - **TASK-08: Ottimizzazione Correlazione via FTS Indexing**
   - **Priority**: `MEDIUM` | **Risk**: `MEDIUM` | **Status**: `PLANNED`
