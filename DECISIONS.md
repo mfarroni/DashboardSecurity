@@ -22,7 +22,7 @@
 
 ---
 
-## Decision Record 002: Disaccoppiamento Sincronizzazioni NVD e Feed tramite Task di Background
+## Decision Record 002: Scheduler NVD/Feed esterno al Web Service
 
 - **Date**: 2026-09-23
 - **Status**: `APPROVED`
@@ -31,9 +31,10 @@
 - **Options**:
   1. Invocazione sincrona via HTTP request (attuale).
   2. Integrazione di uno scheduler in background nel `lifespan` di FastAPI (es. `APScheduler` o `FastAPI BackgroundTasks`).
-- **Chosen Approach**: **Integrazione dello Scheduler nel Lifespan FastAPI**.
-- **Trade-offs**: Minimo consumo di memoria aggiuntivo nel processo backend per gestire il ciclo di sincronizzazione periodica.
-- **Consequences**: L'utente ottiene una risposta immediata dalle API e i dati CVE/Feed rimangono costantemente aggiornati in background.
+- **Chosen Approach**: **Render Cron Job** (o worker singolo equivalente) fuori dal processo FastAPI Web Service.
+- **Trade-offs**: Richiede un componente di esecuzione separato e osservabilità del job, ma evita esecuzioni duplicate quando il Web Service viene scalato.
+- **Execution contract**: job idempotenti, retry con backoff limitato, nessuna sovrapposizione per source, tracciamento `sync_runs`, percorso manuale amministrativo.
+- **Consequences**: il Web Service rimane stateless e scalabile; NVD/Feed sync non dipende dal numero di istanze HTTP.
 
 ---
 
