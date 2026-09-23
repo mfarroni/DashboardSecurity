@@ -163,3 +163,25 @@ Richiesta autorizzazione esplicita prima di:
 3. Risoluzione dei 2 bug bloccanti (`cve_detail.html` e `NameError`).
 4. Implementazione del modulo Auth & RBAC.
 5. Esecuzione dei Security Test e Quality Gate.
+
+
+## 19. Architecture Gate 2.1 resolutions
+
+1. Scheduler: no periodic scheduler in the FastAPI Web Service. Use Render Cron Job or a single worker with idempotent NVD/Feed jobs and non-overlap controls.
+2. Deployment: Vercel -> Render Web Service -> Neon PostgreSQL is the production topology. Preview and Production databases are isolated. Full controls are in DEPLOYMENT_ARCHITECTURE.md.
+3. Browser auth: server-managed secure session cookie + CSRF. JWT is not stored in browser storage.
+4. RBAC: named permissions back the ADMIN/ANALYST/READ_ONLY roles; see SECURITY_ARCHITECTURE.md.
+5. Target data model: identity, audit, alert/detection and operational sync entities are defined as TARGET only; implementation requires Alembic migrations and explicit backfill decisions.
+6. Pydantic: remain on current Pydantic v1 for the first controlled implementation; migrate to v2 as a separate refactor with tests.
+7. Uploads: 50 MB is a file/request baseline complemented by streaming, parser limits, type validation, temporary-file controls and rate limiting.
+
+## 20. Revised implementation gates
+
+Gate A — Architecture: documentation complete and internally consistent.  
+Gate B — Quick Wins: create missing CVE template, fix NameError and duplicate import, with regression tests.  
+Gate C — Security: authentication/RBAC, CSRF, CORS, mandatory secrets, upload controls, security headers and audit logging.  
+Gate D — PostgreSQL: compatibility tests, Alembic baseline/migrations, Neon Preview integration and only then Production migration plan.  
+Gate E — Operations: Render Web Service, Render Cron/worker, health checks, logging, monitoring, backup/recovery and rollback validation.  
+Gate F — Independent Review: separate security/code review followed by Release Gate and explicit human approval for production.
+
+No production deployment is authorized by this document alone.
