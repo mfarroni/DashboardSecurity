@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Security Dashboard - Overview{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-semibold text-gray-900">Security Dashboard</h1>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <a href="/perimetro" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Perimetro</a>
+                    <a href="/vulnerabilita" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Vulnerabilità</a>
+                    <a href="/feed" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Feed</a>
+                    <a href="/syslog" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Syslog</a>
+                    <button onclick="location.reload()" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                        <i class="fas fa-sync-alt"></i> Aggiorna
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-8" hx-get="/api/overview" hx-trigger="load, every 30s" hx-swap="innerHTML">
+            <!-- Cards will be populated by HTMX -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div class="h-8 bg-gray-200 rounded w-1/4"></div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div class="h-8 bg-gray-200 rounded w-1/4"></div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div class="h-8 bg-gray-200 rounded w-1/4"></div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div class="h-8 bg-gray-200 rounded w-1/4"></div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div class="h-8 bg-gray-200 rounded w-1/4"></div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div class="h-8 bg-gray-200 rounded w-1/4"></div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Recent Critical Vulnerabilities -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 lg:col-span-2">
+                <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-gray-900">CVE Critiche/Alte sul Perimetro</h2>
+                    <a href="/vulnerabilita?severity=CRITICAL,HIGH" class="text-sm text-blue-600 hover:text-blue-800">Vedi tutto</a>
+                </div>
+                <div id="critical-vulns" hx-get="/api/dashboard/critical-vulns" hx-trigger="load, every 30s">
+                    <div class="p-6 text-center text-gray-500">Caricamento...</div>
+                </div>
+            </div>
+
+            <!-- Recent Feed Items -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-gray-900">Feed Recenti</h2>
+                    <a href="/feed" class="text-sm text-blue-600 hover:text-blue-800">Vedi tutto</a>
+                </div>
+                <div id="recent-feed" hx-get="/api/dashboard/recent-feed" hx-trigger="load, every 30s">
+                    <div class="p-6 text-center text-gray-500">Caricamento...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Asset Summary & Syslog Alerts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Assets by Type/Criticality -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">Asset per Tipo</h2>
+                </div>
+                <div id="assets-by-type" hx-get="/api/dashboard/assets-by-type" hx-trigger="load, every 60s">
+                    <div class="p-6 text-center text-gray-500">Caricamento...</div>
+                </div>
+            </div>
+
+            <!-- Syslog High Severity -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-gray-900">Log Syslog (Ultimi 24h)</h2>
+                    <a href="/syslog" class="text-sm text-blue-600 hover:text-blue-800">Vedi tutto</a>
+                </div>
+                <div id="syslog-stats" hx-get="/api/dashboard/syslog-stats" hx-trigger="load, every 60s">
+                    <div class="p-6 text-center text-gray-500">Caricamento...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- CVE Detail Modal -->
+    <div id="cve-modal" class="fixed inset-0 modal-overlay hidden z-50 flex items-center justify-center p-4" onclick="closeCveModal(event)">
+        <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full modal-content max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div id="cve-modal-content">
+                <!-- Populated via HTMX -->
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openCveModal(cveId) {
+        document.getElementById('cve-modal').classList.remove('hidden');
+        document.getElementById('cve-modal-content').innerHTML = '<div class="p-8 text-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div></div>';
+        htmx.ajax('GET', `/api/cve/${cveId}`, { target: '#cve-modal-content', swap: 'innerHTML' });
+    }
+
+    function closeCveModal(event) {
+        if (event.target.id === 'cve-modal') {
+            document.getElementById('cve-modal').classList.add('hidden');
+        }
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.getElementById('cve-modal').classList.add('hidden');
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Security Dashboard{% endblock %}</title>
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js for small interactions -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Custom styles -->
+    <style>
+        .badge-critical { @apply bg-red-600 text-white; }
+        .badge-high { @apply bg-orange-500 text-white; }
+        .badge-medium { @apply bg-yellow-500 text-white; }
+        .badge-low { @apply bg-blue-500 text-white; }
+        .badge-none { @apply bg-gray-400 text-white; }
+        .badge-new { @apply bg-blue-600 text-white; }
+        .badge-in_valutazione { @apply bg-yellow-500 text-white; }
+        .badge-mitigata { @apply bg-green-600 text-white; }
+        .badge-accettata { @apply bg-gray-500 text-white; }
+        .badge-cpe_exact { @apply bg-green-600 text-white; }
+        .badge-cpe_partial { @apply bg-yellow-500 text-white; }
+        .badge-textual { @apply bg-purple-500 text-white; }
+        
+        .cve-card { transition: all 0.2s ease; }
+        .cve-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        
+        .table-row:hover { background-color: #f9fafb; }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
+        
+        /* Modal */
+        .modal-overlay { 
+            background: rgba(0,0,0,0.5); 
+            backdrop-filter: blur(2px);
+        }
+        .modal-content { 
+            max-height: 90vh; 
+            overflow-y: auto;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-50 min-h-screen">
+    {% block content %}{% endblock %}
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

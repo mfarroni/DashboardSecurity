@@ -1,0 +1,90 @@
+name: "nvd-sync"
+description: "Sincronizza CVE recenti da NVD API 2.0 con gestione rate limit e caching"
+version: "1.0.0"
+author: "Security Dashboard Team"
+
+commands:
+  - name: "sync-recent"
+    description: "Sincronizza CVE degli ultimi N giorni"
+    arguments:
+      - name: "days"
+        description: "Giorni indietro da sincronizzare (default: 7)"
+        type: "number"
+        default: 7
+      - name: "api-key"
+        description: "API Key NVD (opzionale, usa env NVD_API_KEY se omesso)"
+        type: "string"
+        required: false
+    script: |
+      #!/bin/bash
+      set -e
+      
+      DAYS=${1:-7}
+      API_KEY=${2:-$NVD_API_KEY}
+      
+      echo "🔄 Sincronizzazione NVD CVE (ultimi $DAYS giorni)..."
+      
+      # Verifica se l'app è in esecuzione
+      if ! curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+          echo "❌ App non raggiungibile su localhost:8000. Avvia con: docker compose up -d"
+          exit 1
+      fi
+      
+      # Chiama endpoint di sync
+      RESPONSE=$(curl -s -X POST "http://localhost:8000/api/cve/sync/nvd?days=$DAYS" \
+        -H "Content-Type: application/json")
+      
+      echo "$RESPONSE" | jq '.'
+      
+      IMPORTED=$(echo "$RESPONSE" | jq -r '.imported // 0')
+      UPDATED=$(echo "$RESPONSE" | jq -r '.updated // 0')
+      ERRORS=$(echo "$RESPONSE" | jq -r '.errors // [] | length')
+      
+      echo "✅ Importate: $IMPORTED | Aggiornate: $UPDATED | Errori: $ERRORS"
+      
+      if [ "$ERRORS" -gt 0 ]; then
+          echo "⚠️  Errori:"
+          echo "$RESPONSE" | jq -r '.errors[]'
+      fi
+
+  - name: "sync-single"
+    description: "Sincronizza una singola CVE per ID"
+    arguments:
+      - name: "cve-id"
+        description: "ID CVE (es. CVE-2024-12345)"
+        type: "string"
+        required: true
+    script: |
+      #!/bin/bash
+      set -e
+      
+      CVE_ID=$1
+      
+      if [[ ! $CVE_ID =~ ^CVE-[0-9]{4}-[0-9]{4,7}$ ]]; then
+          echo "❌ Formato CVE non valido. Usa: CVE-YYYY-NNNNN"
+          exit 1
+      fi
+      
+      echo "🔄 Fetch CVE $CVE_ID da NVD..."
+      
+      RESPONSE=$(curl -s "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=$CVE_ID" \
+        ${NVD_API_KEY:+-H "apiKey: $NVD_API_KEY"})
+      
+      if echo "$RESPONSE" | jq -e '.vulnerabilities[0]' > /dev/null; then
+          echo "$RESPONSE" | jq '.vulnerabilities[0].cve'
+      else
+          echo "❌ CVE non trovata o errore API"
+          echo "$RESPONSE" | jq '.'
+      fi
+
+  - name: "rate-limit-info"
+    description: "Mostra info rate limit NVD attuale"
+    script: |
+      #!/bin/bash
+      echo "📊 Rate Limit NVD:"
+      echo "  Senza API Key: 5 richieste / 30 secondi"
+      echo "  Con API Key:   50 richieste / 30 secondi"
+      echo ""
+      echo "  API Key configurata: ${NVD_API_KEY:+Sì (${NVD_API_KEY:0:8}...)}${NVD_API_KEY:-No}"
+      echo ""
+      echo "  Per richiedere una key: https://nvd.nist.gov/developers/request-an-api-key"

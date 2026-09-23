@@ -1,0 +1,170 @@
+name: "perimetro-import"
+description: "Importa perimetro di sicurezza (asset inventory) da CSV/Excel/JSON con mapping colonne"
+version: "1.0.0"
+author: "Security Dashboard Team"
+
+commands:
+  - name: "preview"
+    description: "Anteprima import con mapping suggerito"
+    arguments:
+      - name: "file"
+        description: "File CSV/Excel/JSON"
+        type: "string"
+        required: true
+    script: |
+      #!/bin/bash
+      set -e
+      
+      FILE=$1
+      
+      if [ ! -f "$FILE" ]; then
+          echo "❌ File non trovato: $FILE"
+          exit 1
+      fi
+      
+      echo "👁️  Anteprima import: $FILE"
+      
+      RESPONSE=$(curl -s -X POST "http://localhost:8000/api/assets/import/preview" \
+        -F "file=@$FILE")
+      
+      echo "$RESPONSE" | jq '.'
+      
+      echo ""
+      echo "Mapping suggerito:"
+      echo "$RESPONSE" | jq -r '.suggested_mapping | to_entries[] | "  \(.key) ← \(.value)"'
+      
+      ERRORS=$(echo "$RESPONSE" | jq -r '.validation_errors | length')
+      if [ "$ERRORS" -gt 0 ]; then
+          echo ""
+          echo "⚠️  Errori validazione:"
+          echo "$RESPONSE" | jq -r '.validation_errors[]'
+      fi
+
+  - name: "import"
+    description: "Esegue import perimetro con mapping"
+    arguments:
+      - name: "file"
+        description: "File CSV/Excel/JSON"
+        type: "string"
+        required: true
+      - name: "mapping"
+        description: "Mapping JSON (es. '{\"tipo\":\"type\",\"nome\":\"name\"}')"
+        type: "string"
+        required: true
+      - name: "batch-id"
+        description: "ID batch personalizzato (opzionale)"
+        type: "string"
+        required: false
+    script: |
+      #!/bin/bash
+      set -e
+      
+      FILE=$1
+      MAPPING=$2
+      BATCH_ID=${3:-}
+      
+      if [ ! -f "$FILE" ]; then
+          echo "❌ File non trovato: $FILE"
+          exit 1
+      fi
+      
+      echo "📥 Import perimetro: $FILE"
+      
+      ARGS=(-F "file=@$FILE" -F "mapping=$MAPPING")
+      [ -n "$BATCH_ID" ] && ARGS+=(-F "batch_id=$BATCH_ID")
+      
+      RESPONSE=$(curl -s -X POST "http://localhost:8000/api/assets/import/execute" \
+        "${ARGS[@]}")
+      
+      echo "$RESPONSE" | jq '.'
+      
+      IMPORTED=$(echo "$RESPONSE" | jq -r '.records_imported // 0')
+      FAILED=$(echo "$RESPONSE" | jq -r '.records_failed // 0')
+      
+      echo "✅ Importati: $IMPORTED | Falliti: $FAILED"
+
+  - name: "import-interactive"
+    description: "Import guidato: preview → conferma mapping → esegui"
+    arguments:
+      - name: "file"
+        description: "File CSV/Excel/JSON"
+        type: "string"
+        required: true
+    script: |
+      #!/bin/bash
+      set -e
+      
+      FILE=$1
+      
+      # Step 1: Preview
+      echo "=== STEP 1: Anteprima ==="
+      PREVIEW=$(curl -s -X POST "http://localhost:8000/api/assets/import/preview" \
+        -F "file=@$FILE")
+      
+      echo "$PREVIEW" | jq '.rows[:5]'
+      echo ""
+      echo "Mapping suggerito:"
+      echo "$PREVIEW" | jq -r '.suggested_mapping | to_entries[] | "  \(.key) ← \(.value)"'
+      
+      ERRORS=$(echo "$PREVIEW" | jq -r '.validation_errors | length')
+      if [ "$ERRORS" -gt 0 ]; then
+          echo ""
+          echo "⚠️  Errori:"
+          echo "$PREVIEW" | jq -r '.validation_errors[]'
+      fi
+      
+      # Step 2: Conferma mapping
+      echo ""
+      echo "=== STEP 2: Conferma mapping ==="
+      echo "Modifica il mapping se necessario (JSON), poi premi INVIO:"
+      echo "$PREVIEW" | jq '.suggested_mapping' > /tmp/suggested_mapping.json
+      cat /tmp/suggested_mapping.json
+      read -p "> " CUSTOM_MAPPING
+      
+      MAPPING=${CUSTOM_MAPPING:-$(cat /tmp/suggested_mapping.json)}
+      
+      # Step 3: Esegui
+      echo ""
+      echo "=== STEP 3: Esecuzione ==="
+      $0 import "$FILE" "$MAPPING"
+
+  - name: "export"
+    description: "Esporta perimetro attuale come CSV"
+    arguments:
+      - name: "output"
+        description: "File output (default: stdout)"
+        type: "string"
+        required: false
+    script: |
+      #!/bin/bash
+      
+      OUTPUT=$1
+      
+      if [ -n "$OUTPUT" ]; then
+          curl -s "http://localhost:8000/api/assets/export/current" > "$OUTPUT"
+          echo "✅ Esportato in: $OUTPUT"
+      else
+          curl -s "http://localhost:8000/api/assets/export/current"
+      fi
+
+  - name: "history"
+    description: "Storico import perimetro"
+    arguments:
+      - name: "limit"
+        description: "Numero record (default: 20)"
+        type: "number"
+        default: 20
+    script: |
+      #!/bin/bash
+      
+      LIMIT=${1:-20}
+      
+      RESPONSE=$(curl -s "http://localhost:8000/api/assets/import/history?limit=$LIMIT")
+      
+      echo "📜 Storico Import Perimetro"
+      echo ""
+      
+      echo "$RESPONSE" | jq -r '
+        .[] | 
+        "\(.started_at[:19] | sub("T"; " ")) | \(.status) | \(.records_imported)/\(.records_total) | \(.filename // "N/A")"
+      '

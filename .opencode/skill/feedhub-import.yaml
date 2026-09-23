@@ -1,0 +1,126 @@
+name: "feedhub-import"
+description: "Importa feed esportati da FeedHub (JSON/CSV)"
+version: "1.0.0"
+author: "Security Dashboard Team"
+
+commands:
+  - name: "import"
+    description: "Importa singolo file FeedHub"
+    arguments:
+      - name: "file"
+        description: "Percorso file JSON/CSV esportato da FeedHub"
+        type: "string"
+        required: true
+    script: |
+      #!/bin/bash
+      set -e
+      
+      FILE=$1
+      
+      if [ ! -f "$FILE" ]; then
+          echo "❌ File non trovato: $FILE"
+          exit 1
+      fi
+      
+      echo "📥 Import FeedHub: $FILE"
+      
+      RESPONSE=$(curl -s -X POST "http://localhost:8000/api/feed/import/feedhub" \
+        -F "file=@$FILE")
+      
+      echo "$RESPONSE" | jq '.'
+      
+      IMPORTED=$(echo "$RESPONSE" | jq -r '.records_imported // 0')
+      FAILED=$(echo "$RESPONSE" | jq -r '.records_failed // 0')
+      
+      echo "✅ Importati: $IMPORTED | Falliti: $FAILED"
+
+  - name: "import-dir"
+    description: "Importa tutti i file FeedHub da una directory"
+    arguments:
+      - name: "dir"
+        description: "Directory con export FeedHub"
+        type: "string"
+        required: true
+    script: |
+      #!/bin/bash
+      set -e
+      
+      DIR=$1
+      
+      if [ ! -d "$DIR" ]; then
+          echo "❌ Directory non trovata: $DIR"
+          exit 1
+      fi
+      
+      echo "📥 Import FeedHub da: $DIR"
+      
+      for file in "$DIR"/*.json "$DIR"/*.csv; do
+          if [ -f "$file" ]; then
+              echo "  → $(basename "$file")"
+              $0 import "$file"
+          fi
+      done
+
+  - name: "list-recent"
+    description: "Lista feed recenti con CVE estratte"
+    arguments:
+      - name: "days"
+        description: "Giorni indietro (default: 7)"
+        type: "number"
+        default: 7
+      - name: "with-cve-only"
+        description: "Solo item con CVE (default: true)"
+        type: "boolean"
+        default: true
+    script: |
+      #!/bin/bash
+      
+      DAYS=${1:-7}
+      WITH_CVE=${2:-true}
+      
+      URL="http://localhost:8000/api/feed?days=$DAYS&page_size=50"
+      [ "$WITH_CVE" = "true" ] && URL="$URL&has_cve=true"
+      
+      RESPONSE=$(curl -s "$URL")
+      
+      echo "📰 Feed FeedHub (ultimi $DAYS giorni)"
+      echo ""
+      
+      echo "$RESPONSE" | jq -r '
+        .items[] | 
+        "\(.title[:80])",
+        "  Fonte: \(.source_name) | \(.collected_at[:19] | sub("T"; " "))",
+        "  CVE: \(.extracted_cves // [] | join(", ") // "nessuna")",
+        "  URL: \(.url // "N/A")",
+        ""
+      '
+
+  - name: "unlinked-cves"
+    description: "Mostra CVE menzionate nei feed ma non ancora nel DB"
+    arguments:
+      - name: "days"
+        description: "Giorni indietro (default: 30)"
+        type: "number"
+        default: 30
+    script: |
+      #!/bin/bash
+      
+      DAYS=${1:-30}
+      
+      echo "🔍 CVE nei feed non ancora sincronizzate da NVD (ultimi $DAYS giorni)"
+      echo ""
+      
+      # Get feed items with CVE
+      FEED_RESPONSE=$(curl -s "http://localhost:8000/api/feed?days=$DAYS&has_cve=true&page_size=200")
+      
+      echo "$FEED_RESPONSE" | jq -r '
+        .items[].extracted_cves[] 
+      ' | sort -u | while read cve; do
+          # Check if in DB
+          CVE_RESPONSE=$(curl -s "http://localhost:8000/api/cve/by-id/$cve" 2>/dev/null)
+          if echo "$CVE_RESPONSE" | jq -e '.detail == "CVE non trovata"' > /dev/null; then
+              echo "  ❌ $cve - NON nel DB (serve sync NVD)"
+          else
+              echo "  ✅ $cve - Già nel DB"
+          fi
+      done

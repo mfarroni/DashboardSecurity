@@ -1,0 +1,180 @@
+name: "syslog-parser"
+description: "Importa e analizza file syslog (RFC 3164/5424) con correlazione asset e CVE"
+version: "1.0.0"
+author: "Security Dashboard Team"
+
+commands:
+  - name: "import"
+    description: "Importa file syslog"
+    arguments:
+      - name: "file"
+        description: "Percorso file syslog"
+        type: "string"
+        required: true
+      - name: "auto-match"
+        description: "Match automatico asset per hostname (default: true)"
+        type: "boolean"
+        default: true
+      - name: "find-cves"
+        description: "Cerca menzioni CVE nei log (default: true)"
+        type: "boolean"
+        default: true
+    script: |
+      #!/bin/bash
+      set -e
+      
+      FILE=$1
+      AUTO_MATCH=${2:-true}
+      FIND_CVES=${3:-true}
+      
+      if [ ! -f "$FILE" ]; then
+          echo "❌ File non trovato: $FILE"
+          exit 1
+      fi
+      
+      echo "📥 Import syslog: $FILE"
+      echo "   Auto-match asset: $AUTO_MATCH"
+      echo "   Trova CVE: $FIND_CVES"
+      
+      RESPONSE=$(curl -s -X POST "http://localhost:8000/api/syslog/import" \
+        -F "file=@$FILE" \
+        -F "auto_match_assets=$AUTO_MATCH" \
+        -F "auto_find_cves=$FIND_CVES")
+      
+      echo "$RESPONSE" | jq '.'
+      
+      IMPORTED=$(echo "$RESPONSE" | jq -r '.records_imported // 0')
+      FAILED=$(echo "$RESPONSE" | jq -r '.records_failed // 0')
+      
+      echo "✅ Importati: $IMPORTED | Falliti: $FAILED"
+
+  - name: "import-dir"
+    description: "Importa tutti i file .log/.txt da una directory"
+    arguments:
+      - name: "dir"
+        description: "Directory con file syslog"
+        type: "string"
+        required: true
+      - name: "pattern"
+        description: "Pattern file (default: *.log *.txt)"
+        type: "string"
+        default: "*.log *.txt"
+    script: |
+      #!/bin/bash
+      set -e
+      
+      DIR=$1
+      PATTERN=${2:-"*.log *.txt"}
+      
+      if [ ! -d "$DIR" ]; then
+          echo "❌ Directory non trovata: $DIR"
+          exit 1
+      fi
+      
+      echo "📥 Import syslog da directory: $DIR"
+      
+      for file in $DIR/$PATTERN; do
+          if [ -f "$file" ]; then
+              echo "  → $file"
+              $0 import "$file" true true
+          fi
+      done
+
+  - name: "search"
+    description: "Cerca nei log importati"
+    arguments:
+      - name: "query"
+        description: "Testo da cercare"
+        type: "string"
+        required: true
+      - name: "hostname"
+        description: "Filtra per hostname"
+        type: "string"
+        required: false
+      - name: "severity"
+        description: "Filtra per severità (emerg, alert, crit, err, warning, notice, info, debug)"
+        type: "string"
+        required: false
+      - name: "hours"
+        description: "Ultimi N ore (default: 24)"
+        type: "number"
+        default: 24
+      - name: "limit"
+        description: "Max risultati (default: 50)"
+        type: "number"
+        default: 50
+    script: |
+      #!/bin/bash
+      
+      QUERY=$1
+      HOSTNAME=${2:-}
+      SEVERITY=${3:-}
+      HOURS=${4:-24}
+      LIMIT=${5:-50}
+      
+      URL="http://localhost:8000/api/syslog?search=$QUERY&page_size=$LIMIT"
+      [ -n "$HOSTNAME" ] && URL="$URL&hostname=$HOSTNAME"
+      [ -n "$SEVERITY" ] && URL="$URL&severity=$SEVERITY"
+      
+      START_DATE=$(date -d "$HOURS hours ago" -Iseconds 2>/dev/null || date -v-${HOURS}H -Iseconds 2>/dev/null)
+      URL="$URL&start_date=$START_DATE"
+      
+      RESPONSE=$(curl -s "$URL")
+      
+      echo "$RESPONSE" | jq -r '
+        .items[] | 
+        "[\(.timestamp)] \(.hostname // "N/A") \(.severity) \(.program // "") - \(.message[:120])..."
+      '
+
+  - name: "stats"
+    description: "Statistiche log ultimi N ore"
+    arguments:
+      - name: "hours"
+        description: "Ore indietro (default: 24)"
+        type: "number"
+        default: 24
+    script: |
+      #!/bin/bash
+      
+      HOURS=${1:-24}
+      
+      RESPONSE=$(curl -s "http://localhost:8000/api/syslog/stats?hours=$HOURS")
+      
+      echo "📊 Statistiche Syslog (ultime $HOURS ore)"
+      echo ""
+      echo "$RESPONSE" | jq -r '
+        "Totale: \(.total)",
+        "Con CVE: \(.with_cve_mentions)",
+        "",
+        "Per severità:",
+        (.by_severity | to_entries[] | "  \(.key): \(.value)"),
+        "",
+        "Top host:",
+        (.top_hosts | to_entries[] | "  \(.key): \(.value)")
+      '
+
+  - name: "cve-correlations"
+    description: "Mostra log con menzioni CVE correlate al perimetro"
+    arguments:
+      - name: "hours"
+        description: "Ore indietro (default: 168 = 7 giorni)"
+        type: "number"
+        default: 168
+    script: |
+      #!/bin/bash
+      
+      HOURS=${1:-168}
+      
+      RESPONSE=$(curl -s "http://localhost:8000/api/syslog?has_cve=true&page_size=100&hours=$HOURS")
+      
+      echo "🔗 Log con menzioni CVE (ultime $HOURS ore)"
+      echo ""
+      
+      echo "$RESPONSE" | jq -r '
+        .items[] | 
+        select(.matched_cve_ids != null and .matched_cve_ids | length > 0) |
+        "[\(.timestamp)] \(.hostname // "N/A") \(.severity) - \(.message[:100])...",
+        "  CVE: \(.matched_cve_ids | join(", "))",
+        "  Asset: \(.asset.nome // "N/A") (\(.asset.vendor // ""))",
+        ""
+      '

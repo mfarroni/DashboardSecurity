@@ -1,0 +1,301 @@
+name: "security-dashboard"
+description: "Comando unificato per Security Dashboard - orchestrazione skill e workflow comuni"
+version: "1.0.0"
+author: "Security Dashboard Team"
+
+commands:
+  - name: "setup"
+    description: "Setup iniziale completo (build, init DB, default settings)"
+    script: |
+      #!/bin/bash
+      set -e
+      
+      echo "🚀 Setup iniziale Security Dashboard"
+      echo ""
+      
+      # 1. Build e avvio
+      echo "=== 1/5 Build container ==="
+      opencode skill docker-manage up true true
+      
+      # 2. Init database (già fatto al primo avvio, ma verifichiamo)
+      echo "=== 2/5 Verifica database ==="
+      sleep 3
+      curl -sf http://localhost:8000/health > /dev/null && echo "✅ DB OK" || echo "⚠️  DB non pronto"
+      
+      # 3. Init default settings
+      echo "=== 3/5 Impostazioni default ==="
+      curl -s -X POST "http://localhost:8000/api/settings/init-defaults" | jq '.'
+      
+      # 4. Init test log
+      echo "=== 4/5 Registro test ==="
+      opencode skill test-runner init-log
+      
+      # 5. Info finali
+      echo "=== 5/5 Completato ==="
+      echo ""
+      echo "✅ Security Dashboard pronta!"
+      echo "   🌐 Dashboard: http://localhost:8000"
+      echo "   📚 API Docs: http://localhost:8000/docs"
+      echo ""
+      echo "Prossimi passi:"
+      echo "  1. Importa perimetro: opencode skill perimetro-import import-interactive ./assets.csv"
+      echo "  2. Sync NVD:        opencode skill nvd-sync sync-recent 30"
+      echo "  3. Correlazione:    opencode skill cve-correlation run-all"
+      echo "  4. Import feed:     opencode skill feedhub-import import ./feedhub_export.json"
+      echo "  5. Import syslog:   opencode skill syslog-parser import ./logs/syslog.log"
+
+  - name: "daily-sync"
+    description: "Sincronizzazione giornaliera (NVD + correlazione + stats)"
+    script: |
+      #!/bin/bash
+      set -e
+      
+      echo "🔄 Sincronizzazione Giornaliera"
+      echo "$(date)"
+      echo ""
+      
+      # 1. Sync NVD (ultimi 2 giorni per sicurezza)
+      echo "=== NVD Sync ==="
+      opencode skill nvd-sync sync-recent 2
+      
+      # 2. Correlazione
+      echo "=== Correlazione ==="
+      opencode skill cve-correlation run-all
+      
+      # 3. Stats overview
+      echo "=== Overview ==="
+      curl -s "http://localhost:8000/api/dashboard/api/overview" | jq '
+        "Asset: \(.total_assets) (HW: \(.assets_by_type.hardware // 0), SW: \(.assets_by_type.software // 0))",
+        "CVE: \(.total_cves) (Critiche: \(.cves_by_severity.CRITICAL // 0), Alte: \(.cves_by_severity.HIGH // 0))",
+        "Critiche su perimetro: \(.critical_cves_affecting_assets)",
+        "Feed (7g): \(.recent_feed_items) | Non letti: \(.unread_feed_items)",
+        "Syslog (24h): \(.recent_syslog_entries) | Alta severità: \(.high_severity_logs_last_24h)"
+      ' -r
+      
+      echo ""
+      echo "✅ Sync giornaliera completata"
+
+  - name: "weekly-full-sync"
+    description: "Sincronizzazione settimanale completa (NVD 30gg + full correlation)"
+    script: |
+      #!/bin/bash
+      set -e
+      
+      echo "📅 Sincronizzazione Settimanale Completa"
+      echo "$(date)"
+      echo ""
+      
+      # 1. Sync NVD ultimi 30 giorni
+      echo "=== NVD Sync (30 giorni) ==="
+      opencode skill nvd-sync sync-recent 30
+      
+      # 2. Full correlation
+      echo "=== Correlazione Completa ==="
+      opencode skill cve-correlation run-all
+      
+      # 3. Stats dettagliate
+      echo "=== Statistiche Complete ==="
+      opencode skill cve-correlation stats
+      
+      # 4. Backup
+      echo "=== Backup ==="
+      opencode skill docker-manage backup
+      
+      echo ""
+      echo "✅ Sync settimanale completata"
+
+  - name: "import-all"
+    description: "Importa tutto: perimetro, feed, syslog (interattivo)"
+    script: |
+      #!/bin/bash
+      set -e
+      
+      echo "📥 Import Completo (Interattivo)"
+      echo ""
+      
+      # Perimetro
+      read -p "📁 File perimetro (CSV/Excel/JSON) [skip]: " PERIMETRO_FILE
+      if [ -n "$PERIMETRO_FILE" ] && [ -f "$PERIMETRO_FILE" ]; then
+          opencode skill perimetro-import import-interactive "$PERIMETRO_FILE"
+          echo ""
+      fi
+      
+      # FeedHub
+      read -p "📁 File/Directory FeedHub export [skip]: " FEEDHUB_PATH
+      if [ -n "$FEEDHUB_PATH" ]; then
+          if [ -d "$FEEDHUB_PATH" ]; then
+              opencode skill feedhub-import import-dir "$FEEDHUB_PATH"
+          elif [ -f "$FEEDHUB_PATH" ]; then
+              opencode skill feedhub-import import "$FEEDHUB_PATH"
+          fi
+          echo ""
+      fi
+      
+      # Syslog
+      read -p "📁 File/Directory Syslog [skip]: " SYSLOG_PATH
+      if [ -n "$SYSLOG_PATH" ]; then
+          if [ -d "$SYSLOG_PATH" ]; then
+              opencode skill syslog-parser import-dir "$SYSLOG_PATH"
+          elif [ -f "$SYSLOG_PATH" ]; then
+              opencode skill syslog-parser import "$SYSLOG_PATH"
+          fi
+          echo ""
+      fi
+      
+      # Correlazione finale
+      read -p "🔗 Eseguire correlazione ora? [Y/n]: " DO_CORRELATE
+      if [ "$DO_CORRELATE" != "n" ] && [ "$DO_CORRELATE" != "N" ]; then
+          opencode skill cve-correlation run-all
+      fi
+      
+      echo ""
+      echo "✅ Import completato"
+
+  - name: "status"
+    description: "Stato completo del sistema"
+    script: |
+      #!/bin/bash
+      
+      echo "📊 Security Dashboard - Stato Sistema"
+      echo "====================================="
+      echo ""
+      
+      # Docker status
+      opencode skill docker-manage status
+      echo ""
+      
+      # Overview
+      echo "--- Overview ---"
+      curl -s "http://localhost:8000/api/dashboard/api/overview" 2>/dev/null | jq -r '
+        "Asset: \(.total_assets)",
+        "  Hardware: \(.assets_by_type.hardware // 0)",
+        "  Software: \(.assets_by_type.software // 0)",
+        "  Produzione: \(.assets_by_criticality.produzione // 0)",
+        "  Test: \(.assets_by_criticality.test // 0)",
+        "",
+        "CVE: \(.total_cves)",
+        "  Critiche: \(.cves_by_severity.CRITICAL // 0)",
+        "  Alte: \(.cves_by_severity.HIGH // 0)",
+        "  Medie: \(.cves_by_severity.MEDIUM // 0)",
+        "  Basse: \(.cves_by_severity.LOW // 0)",
+        "  Nuove (7g): \(.new_cves_last_7d)",
+        "  Critiche/Alte su perimetro: \(.critical_cves_affecting_assets)",
+        "",
+        "Feed (7g): \(.recent_feed_items) | Non letti: \(.unread_feed_items)",
+        "",
+        "Syslog (24h): \(.recent_syslog_entries) | Alta severità: \(.high_severity_logs_last_24h)"
+      ' 2>/dev/null || echo "API non raggiungibile"
+      
+      echo ""
+      echo "--- Correlazione ---"
+      opencode skill cve-correlation stats 2>/dev/null || echo "Non disponibile"
+      
+      echo ""
+      echo "--- Test ---"
+      CYCLE=$(cat .opencode/test-cycle.txt 2>/dev/null || echo "1")
+      echo "Ciclo test corrente: $CYCLE"
+
+  - name: "dev-reset"
+    description: "Reset completo ambiente sviluppo (RIMUOVE DATI!)"
+    arguments:
+      - name: "confirm"
+        description: "Conferma esplicita (richiesto: 'YES')"
+        type: "string"
+        required: true
+    script: |
+      #!/bin/bash
+      
+      CONFIRM=$1
+      
+      if [ "$CONFIRM" != "YES" ]; then
+          echo "❌ Conferma richiesta: opencode skill security-dashboard dev-reset YES"
+          echo "⚠️  QUESTA AZIONE CANCELLA TUTTI I DATI!"
+          exit 1
+      fi
+      
+      echo "🔥 Reset completo ambiente sviluppo..."
+      echo ""
+      
+      # Ferma e rimuovi tutto
+      opencode skill docker-manage down true
+      
+      # Ricrea volumi
+      docker volume rm dashboard_data dashboard_logs dashboard_config 2>/dev/null || true
+      
+      # Riavvia
+      opencode skill docker-manage up true true
+      
+      # Re-inizializza
+      sleep 5
+      opencode skill security-dashboard setup
+      
+      echo ""
+      echo "✅ Reset completato - ambiente pulito pronto"
+
+  - name: "help"
+    description: "Mostra tutti i comandi disponibili"
+    script: |
+      #!/bin/bash
+      
+      cat << 'EOF'
+🛡️  Security Dashboard - Comandi Unificati
+==========================================
+
+WORKFLOW PRINCIPALI:
+  setup              Setup iniziale completo (build, DB, settings, test log)
+  daily-sync         Sync giornaliero (NVD 2gg + correlazione + stats)
+  weekly-full-sync   Sync settimanale (NVD 30gg + full correlation + backup)
+  import-all         Import guidato perimetro + feed + syslog + correlazione
+  status             Stato completo sistema
+
+GESTIONE DOCKER:
+  opencode skill docker-manage up [build] [detach]
+  opencode skill docker-manage down [volumes]
+  opencode skill docker-manage restart [build]
+  opencode skill docker-manage logs [service] [follow] [tail]
+  opencode skill docker-manage shell
+  opencode skill docker-manage db-shell
+  opencode skill docker-manage backup [dir]
+  opencode skill docker-manage status
+
+NVD & CVE:
+  opencode skill nvd-sync sync-recent [days]
+  opencode skill nvd-sync sync-single <CVE-ID>
+  opencode skill nvd-sync rate-limit-info
+  opencode skill cve-correlation run-all [threshold]
+  opencode skill cve-correlation run-asset <asset-id>
+  opencode skill cve-correlation show-matches [asset-id] [match-type]
+  opencode skill cve-correlation stats
+
+PERIMETRO (Asset Inventory):
+  opencode skill perimetro-import preview <file>
+  opencode skill perimetro-import import <file> <mapping-json> [batch-id]
+  opencode skill perimetro-import import-interactive <file>
+  opencode skill perimetro-import export [output-file]
+  opencode skill perimetro-import history [limit]
+
+FEEDHUB:
+  opencode skill feedhub-import import <file>
+  opencode skill feedhub-import import-dir <dir>
+  opencode skill feedhub-import list-recent [days] [with-cve-only]
+  opencode skill feedhub-import unlinked-cves [days]
+
+SYSLOG:
+  opencode skill syslog-parser import <file> [auto-match] [find-cves]
+  opencode skill syslog-parser import-dir <dir> [pattern]
+  opencode skill syslog-parser search <query> [hostname] [severity] [hours] [limit]
+  opencode skill syslog-parser stats [hours]
+  opencode skill syslog-parser cve-correlations [hours]
+
+TESTING:
+  opencode skill test-runner functional [pattern] [coverage]
+  opencode skill test-runner security [type]
+  opencode skill test-runner regression [cycle]
+  opencode skill test-runner init-log
+  opencode skill test-runner next-cycle
+  opencode skill test-runner show-log [cycles]
+
+SVILUPPO:
+  opencode skill security-dashboard dev-reset YES  # ⚠️ CANCELLA DATI!
+
+EOF

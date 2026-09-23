@@ -1,0 +1,104 @@
+<!-- CVE Detail Modal Content -->
+<div class="p-6">
+    <!-- Header -->
+    <div class="flex items-start justify-between mb-6">
+        <div>
+            <h2 class="text-xl font-bold text-gray-900">{{ cve.cve_id }}</h2>
+            <div class="flex items-center gap-3 mt-2">
+                <span class="badge-{{ cve.cvss_v3_severity.value.lower() if cve.cvss_v3_severity else 'none' }} px-3 py-1 rounded-full text-sm font-medium">
+                    {{ cve.cvss_v3_severity.value if cve.cvss_v3_severity else 'N/A' }}
+                    {% if cve.cvss_v3_score %}<span class="ml-1">{{ cve.cvss_v3_score }}</span>{% endif %}
+                </span>
+                {% if cve.vendor_advisory_url %}
+                <a href="{{ cve.vendor_advisory_url }}" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1">
+                    <i class="fas fa-external-link-alt"></i> Advisory Vendor
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        <button onclick="closeCveModal({target:{id:'cve-modal'}})" class="text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times text-xl"></i>
+        </button>
+    </div>
+
+    <!-- Description -->
+    <div class="mb-6">
+        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Descrizione</h3>
+        <p class="text-gray-900 text-sm leading-relaxed">{{ cve.description or 'Nessuna descrizione disponibile' }}</p>
+    </div>
+
+    <!-- Affected Assets -->
+    {% if affected_assets %}
+    <div class="mb-6">
+        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Asset Coinvolti ({{ affected_assets|length }})</h3>
+        <div class="space-y-2 max-h-64 overflow-y-auto">
+            {% for asset in affected_assets %}
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                        <i class="fas {% if asset.match_type == 'cpe_exact' %}fa-check-circle text-green-600{% elif asset.match_type == 'cpe_partial' %}fa-exclamation-circle text-yellow-600{% else %}fa-question-circle text-purple-600{% endif %}"></i>
+                    </div>
+                    <div>
+                        <p class="font-medium text-gray-900 text-sm">{{ asset.nome }}</p>
+                        <p class="text-xs text-gray-500">{{ asset.vendor }} {% if asset.versione %}· v{{ asset.versione }}{% endif %}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="badge-{{ asset.match_type }} px-2 py-0.5 rounded text-xs">{{ asset.match_type.replace('_', ' ').title() }}</span>
+                    <span class="badge-{{ asset.triage_status }} px-2 py-0.5 rounded text-xs">{{ asset.triage_status.replace('_', ' ').title() }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Feed References -->
+    {% if feed_references %}
+    <div class="mb-6">
+        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Riferimenti Feed ({{ feed_references|length }})</h3>
+        <div class="space-y-2 max-h-48 overflow-y-auto">
+            {% for feed in feed_references %}
+            <div class="p-3 bg-gray-50 rounded-lg">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="flex-1 min-w-0">
+                        <p class="font-medium text-gray-900 text-sm truncate">{{ feed.title }}</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ feed.source_name }} · {{ feed.published_at.strftime('%d/%m/%Y %H:%M') if feed.published_at else 'Data sconosciuta' }}</p>
+                    </div>
+                    {% if feed.url %}
+                    <a href="{{ feed.url }}" target="_blank" class="text-blue-600 hover:text-blue-800 text-xs flex-shrink-0">
+                        <i class="fas fa-external-link-alt"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Technical Details -->
+    <details class="mb-6">
+        <summary class="text-sm font-medium text-gray-500 cursor-pointer">Dettagli Tecnici</summary>
+        <div class="mt-3 space-y-2 text-sm text-gray-600">
+            {% if cve.cvss_v3_vector %}<p><strong>CVSS v3 Vector:</strong> {{ cve.cvss_v3_vector }}</p>{% endif %}
+            {% if cve.cvss_v2_score %}<p><strong>CVSS v2:</strong> {{ cve.cvss_v2_score }} ({{ cve.cvss_v2_severity }})</p>{% endif %}
+            {% if cve.published_date %}<p><strong>Pubblicata:</strong> {{ cve.published_date.strftime('%d/%m/%Y') }}</p>{% endif %}
+            {% if cve.last_modified_date %}<p><strong>Ultima modifica:</strong> {{ cve.last_modified_date.strftime('%d/%m/%Y') }}</p>{% endif %}
+            {% if cve.sources %}<p><strong>Fonti:</strong> {{ cve.sources|join(', ') }}</p>{% endif %}
+        </div>
+    </details>
+
+    <!-- References -->
+    {% if cve.references %}
+    <details>
+        <summary class="text-sm font-medium text-gray-500 cursor-pointer">Riferimenti ({{ cve.references|length }})</summary>
+        <div class="mt-3 space-y-1 max-h-48 overflow-y-auto">
+            {% for ref in cve.references[:20] %}
+            <a href="{{ ref }}" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm block truncate">{{ ref }}</a>
+            {% endfor %}
+            {% if cve.references|length > 20 %}<p class="text-xs text-gray-500">... e altri {{ cve.references|length - 20 }}</p>{% endif %}
+        </div>
+    </details>
+    {% endif %}
+</div>

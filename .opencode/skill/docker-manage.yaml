@@ -1,0 +1,172 @@
+name: "docker-manage"
+description: "Gestione Docker Compose per Security Dashboard (build, up, down, logs, shell)"
+version: "1.0.0"
+author: "Security Dashboard Team"
+
+commands:
+  - name: "up"
+    description: "Avvia i container (build se necessario)"
+    arguments:
+      - name: "build"
+        description: "Forza rebuild immagini"
+        type: "boolean"
+        default: false
+      - name: "detach"
+        description: "Esegui in background (default: true)"
+        type: "boolean"
+        default: true
+    script: |
+      #!/bin/bash
+      set -e
+      
+      BUILD=${1:-false}
+      DETACH=${2:-true}
+      
+      ARGS=()
+      [ "$BUILD" = "true" ] && ARGS+=(--build)
+      [ "$DETACH" = "true" ] && ARGS+=(-d)
+      
+      echo "🐳 Avvio Security Dashboard..."
+      docker compose up "${ARGS[@]}"
+      
+      if [ "$DETACH" = "true" ]; then
+          echo ""
+          echo "⏳ Attesa health check..."
+          sleep 5
+          
+          if curl -sf http://localhost:8000/health > /dev/null; then
+              echo "✅ Dashboard pronta: http://localhost:8000"
+          else
+              echo "⚠️  Health check fallito. Controlla logs: opencode skill docker-manage logs"
+          fi
+      fi
+
+  - name: "down"
+    description: "Ferma e rimuove i container"
+    arguments:
+      - name: "volumes"
+        description: "Rimuovi anche i volumi (DATI PERSI!)"
+        type: "boolean"
+        default: false
+    script: |
+      #!/bin/bash
+      
+      VOLUMES=${1:-false}
+      
+      ARGS=()
+      [ "$VOLUMES" = "true" ] && ARGS+=(-v)
+      
+      echo "🛑 Arresto Security Dashboard..."
+      docker compose down "${ARGS[@]}"
+      echo "✅ Fatto"
+
+  - name: "restart"
+    description: "Riavvia i container"
+    arguments:
+      - name: "build"
+        description: "Rebuild prima di riavviare"
+        type: "boolean"
+        default: false
+    script: |
+      #!/bin/bash
+      
+      BUILD=${1:-false}
+      
+      $0 down false
+      $0 up "$BUILD" true
+
+  - name: "logs"
+    description: "Mostra log dei container"
+    arguments:
+      - name: "service"
+        description: "Servizio specifico (app, nginx)"
+        type: "string"
+        required: false
+      - name: "follow"
+        description: "Follow log in tempo reale"
+        type: "boolean"
+        default: true
+      - name: "tail"
+        description: "Ultime N righe (default: 100)"
+        type: "number"
+        default: 100
+    script: |
+      #!/bin/bash
+      
+      SERVICE=${1:-}
+      FOLLOW=${2:-true}
+      TAIL=${3:-100}
+      
+      ARGS=()
+      [ "$FOLLOW" = "true" ] && ARGS+=(-f)
+      ARGS+=(--tail "$TAIL")
+      [ -n "$SERVICE" ] && ARGS+=("$SERVICE")
+      
+      docker compose logs "${ARGS[@]}"
+
+  - name: "shell"
+    description: "Apre shell nel container app"
+    script: |
+      #!/bin/bash
+      
+      echo "🐚 Shell nel container app..."
+      docker compose exec app bash
+
+  - name: "db-shell"
+    description: "Apre SQLite shell sul database"
+    script: |
+      #!/bin/bash
+      
+      echo "🗄️  SQLite shell..."
+      docker compose exec app sqlite3 /app/data/security.db
+
+  - name: "backup"
+    description: "Backup database e dati"
+    arguments:
+      - name: "output-dir"
+        description: "Directory output (default: ./backups)"
+        type: "string"
+        default: "./backups"
+    script: |
+      #!/bin/bash
+      set -e
+      
+      OUT_DIR=${1:-./backups}
+      TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+      
+      mkdir -p "$OUT_DIR"
+      
+      echo "💾 Backup in $OUT_DIR/backup_$TIMESTAMP..."
+      
+      # Backup database
+      docker compose exec -T app sqlite3 /app/data/security.db .dump > "$OUT_DIR/db_$TIMESTAMP.sql"
+      
+      # Backup data directory
+      docker compose cp app:/app/data "$OUT_DIR/data_$TIMESTAMP"
+      
+      echo "✅ Backup completato:"
+      echo "  - $OUT_DIR/db_$TIMESTAMP.sql"
+      echo "  - $OUT_DIR/data_$TIMESTAMP/"
+
+  - name: "status"
+    description: "Stato container e health check"
+    script: |
+      #!/bin/bash
+      
+      echo "📊 Stato Security Dashboard"
+      echo ""
+      
+      docker compose ps
+      echo ""
+      
+      if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+          HEALTH=$(curl -s http://localhost:8000/health | jq -r '.status')
+          echo "🌐 Health Check: $HEALTH"
+          echo "🔗 Dashboard: http://localhost:8000"
+      else
+          echo "🌐 Health Check: NON RAGGIUNGIBILE"
+      fi
+      
+      echo ""
+      echo "💾 Volumi:"
+      docker volume ls --filter "name=dashboard" --format "table {{.Name}}\t{{.Driver}}\t{{.Scope}}"

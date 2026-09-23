@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Syslog - Security Dashboard{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="text-xl font-semibold text-gray-900">Security Dashboard</a>
+                    <span class="mx-2 text-gray-400">/</span>
+                    <a href="/perimetro" class="text-gray-600 hover:text-gray-900">Perimetro</a>
+                    <span class="mx-2 text-gray-400">/</span>
+                    <a href="/vulnerabilita" class="text-gray-600 hover:text-gray-900">Vulnerabilità</a>
+                    <span class="mx-2 text-gray-400">/</span>
+                    <a href="/feed" class="text-gray-600 hover:text-gray-900">Feed</a>
+                    <span class="mx-2 text-gray-400">/</span>
+                    <span class="text-gray-600">Syslog</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="location.reload()" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Analisi Syslog</h1>
+                <p class="text-gray-500 mt-1">Log aggregati sistemi/hardware/software del perimetro</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('import-syslog-modal').classList.remove('hidden')" 
+                        class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
+                    <i class="fas fa-upload mr-2"></i>Importa Syslog
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div id="syslog-stats-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" 
+             hx-get="/api/dashboard/syslog-stats" hx-trigger="load, every 60s">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div class="h-8 bg-gray-200 rounded w-1/4"></div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div class="h-8 bg-gray-200 rounded w-1/4"></div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div class="h-8 bg-gray-200 rounded w-1/4"></div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+                <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div class="h-8 bg-gray-200 rounded w-1/4"></div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+            <div class="flex flex-wrap gap-4 items-end">
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Hostname</label>
+                    <input type="text" id="filter-syslog-hostname" placeholder="Filtra hostname..." 
+                           class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-48"
+                           hx-get="/api/syslog" hx-target="#syslog-table" hx-trigger="keyup changed delay:300ms"
+                           hx-include="[id='filter-syslog-severity'],[id='filter-syslog-facility'],[id='filter-syslog-search'],[id='filter-syslog-asset'],[id='filter-syslog-has-cve'],[id='filter-syslog-hours']">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Severità</label>
+                    <select id="filter-syslog-severity" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            hx-get="/api/syslog" hx-target="#syslog-table" hx-trigger="change"
+                            hx-include="[id='filter-syslog-hostname'],[id='filter-syslog-facility'],[id='filter-syslog-search'],[id='filter-syslog-asset'],[id='filter-syslog-has-cve'],[id='filter-syslog-hours']">
+                        <option value="">Tutte</option>
+                        <option value="emerg">Emergency</option>
+                        <option value="alert">Alert</option>
+                        <option value="crit">Critical</option>
+                        <option value="err">Error</option>
+                        <option value="warning">Warning</option>
+                        <option value="notice">Notice</option>
+                        <option value="info">Info</option>
+                        <option value="debug">Debug</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Facility</label>
+                    <select id="filter-syslog-facility" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            hx-get="/api/syslog" hx-target="#syslog-table" hx-trigger="change"
+                            hx-include="[id='filter-syslog-hostname'],[id='filter-syslog-severity'],[id='filter-syslog-search'],[id='filter-syslog-asset'],[id='filter-syslog-has-cve'],[id='filter-syslog-hours']">
+                        <option value="">Tutte</option>
+                        <option value="kern">Kern</option>
+                        <option value="user">User</option>
+                        <option value="mail">Mail</option>
+                        <option value="daemon">Daemon</option>
+                        <option value="auth">Auth</option>
+                        <option value="syslog">Syslog</option>
+                        <option value="local0">Local0</option>
+                        <option value="local1">Local1</option>
+                        <option value="local2">Local2</option>
+                        <option value="local3">Local3</option>
+                        <option value="local4">Local4</option>
+                        <option value="local5">Local5</option>
+                        <option value="local6">Local6</option>
+                        <option value="local7">Local7</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Asset</label>
+                    <select id="filter-syslog-asset" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-48"
+                            hx-get="/api/syslog" hx-target="#syslog-table" hx-trigger="change"
+                            hx-include="[id='filter-syslog-hostname'],[id='filter-syslog-severity'],[id='filter-syslog-facility'],[id='filter-syslog-search'],[id='filter-syslog-has-cve'],[id='filter-syslog-hours']">
+                        <option value="">Tutti</option>
+                        <option value="matched">Solo con asset</option>
+                        <option value="unmatched">Senza asset</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">CVE</label>
+                    <select id="filter-syslog-has-cve" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            hx-get="/api/syslog" hx-target="#syslog-table" hx-trigger="change"
+                            hx-include="[id='filter-syslog-hostname'],[id='filter-syslog-severity'],[id='filter-syslog-facility'],[id='filter-syslog-search'],[id='filter-syslog-asset'],[id='filter-syslog-hours']">
+                        <option value="">Tutte</option>
+                        <option value="true">Con CVE menzionate</option>
+                        <option value="false">Senza CVE</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Periodo</label>
+                    <select id="filter-syslog-hours" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            hx-get="/api/syslog" hx-target="#syslog-table" hx-trigger="change"
+                            hx-include="[id='filter-syslog-hostname'],[id='filter-syslog-severity'],[id='filter-syslog-facility'],[id='filter-syslog-search'],[id='filter-syslog-asset'],[id='filter-syslog-has-cve']">
+                        <option value="24">Ultimi 24h</option>
+                        <option value="168">Ultimi 7 giorni</option>
+                        <option value="720">Ultimi 30 giorni</option>
+                        <option value="">Tutto</option>
+                    </select>
+                </div>
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Ricerca messaggio</label>
+                    <input type="text" id="filter-syslog-search" placeholder="Testo libero nel messaggio..." 
+                           class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
+                           hx-get="/api/syslog" hx-target="#syslog-table" hx-trigger="keyup changed delay:300ms"
+                           hx-include="[id='filter-syslog-hostname'],[id='filter-syslog-severity'],[id='filter-syslog-facility'],[id='filter-syslog-asset'],[id='filter-syslog-has-cve'],[id='filter-syslog-hours']">
+                </div>
+            </div>
+        </div>
+
+        <!-- Syslog Table -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">Timestamp</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Hostname</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Sev</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Facility</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Program</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Messaggio</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-36">Asset / CVE</th>
+                        </tr>
+                    </thead>
+                    <tbody id="syslog-table" class="divide-y divide-gray-200 font-mono text-xs" hx-get="/api/syslog" hx-trigger="load">
+                        <tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">Caricamento...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="syslog-pagination" class="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+                <span class="text-sm text-gray-500" id="syslog-pagination-info"></span>
+                <div class="flex gap-2" id="syslog-pagination-controls"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Import Syslog Modal -->
+    <div id="import-syslog-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4" onclick="closeSyslogImportModal(event)">
+        <div class="bg-white rounded-lg shadow-xl max-w-xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                <h2 class="text-lg font-semibold">Importa Syslog</h2>
+                <button onclick="closeSyslogImportModal({target:{id:'import-syslog-modal'}})" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">File Syslog (.log, .txt)</label>
+                    <input type="file" id="syslog-import-file" accept=".log,.txt,.syslog" 
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
+                </div>
+                <div class="flex items-center gap-4">
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" id="syslog-auto-match" checked>
+                        Match automatico asset per hostname
+                    </label>
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" id="syslog-find-cves" checked>
+                        Cerca menzioni CVE
+                    </label>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="executeSyslogImport()" class="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700">
+                        <i class="fas fa-check mr-2"></i>Importa
+                    </button>
+                    <button onclick="closeSyslogImportModal({target:{id:'import-syslog-modal'}})" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-400">
+                        Annulla
+                    </button>
+                </div>
+                <div id="syslog-import-result" class="hidden"></div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function closeSyslogImportModal(event) {
+        if (event.target.id === 'import-syslog-modal') {
+            document.getElementById('import-syslog-modal').classList.add('hidden');
+            document.getElementById('syslog-import-file').value = '';
+            document.getElementById('syslog-import-result').classList.add('hidden').innerHTML = '';
+        }
+    }
+
+    function executeSyslogImport() {
+        const file = document.getElementById('syslog-import-file').files[0];
+        if (!file) {
+            alert('Seleziona un file');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('auto_match_assets', document.getElementById('syslog-auto-match').checked);
+        formData.append('auto_find_cves', document.getElementById('syslog-find-cves').checked);
+
+        fetch('/api/syslog/import', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('syslog-import-result').classList.remove('hidden').innerHTML = 
+                `<div class="p-4 ${data.records_failed > 0 ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'} border rounded">
+                    <h4 class="font-medium ${data.records_failed > 0 ? 'text-yellow-800' : 'text-green-800'}">
+                        ${data.records_failed > 0 ? 'Import Completato con Errori' : 'Import Completato'}
+                    </h4>
+                    <p class="text-sm mt-1">Importati: ${data.records_imported} | Falliti: ${data.records_failed}</p>
+                    ${data.errors ? `<details class="mt-2"><summary class="text-sm font-medium">Errori (${data.errors.length})</summary><ul class="text-xs text-red-600 mt-1">${data.errors.map(e => `<li>${e}</li>`).join('')}</ul></details>` : ''}
+                </div>`;
+            htmx.ajax('GET', '/api/syslog', { target: '#syslog-table', swap: 'innerHTML' });
+            htmx.ajax('GET', '/api/dashboard/syslog-stats', { target: '#syslog-stats-cards', swap: 'innerHTML' });
+        })
+        .catch(err => alert('Errore: ' + err));
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.getElementById('import-syslog-modal').classList.add('hidden');
+        }
+    });
+</script>
+{% endblock %}

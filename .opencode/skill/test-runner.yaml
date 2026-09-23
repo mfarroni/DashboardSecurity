@@ -1,0 +1,179 @@
+name: "test-runner"
+description: "Esegue test funzionali e di sicurezza con registro non-regressione"
+version: "1.0.0"
+author: "Security Dashboard Team"
+
+commands:
+  - name: "functional"
+    description: "Esegue test funzionali (pytest)"
+    arguments:
+      - name: "pattern"
+        description: "Pattern test (es. test_assets, test_cve)"
+        type: "string"
+        required: false
+      - name: "coverage"
+        description: "Genera coverage report"
+        type: "boolean"
+        default: false
+    script: |
+      #!/bin/bash
+      set -e
+      
+      PATTERN=${1:-}
+      COVERAGE=${2:-false}
+      
+      echo "🧪 Test Funzionali"
+      echo ""
+      
+      ARGS=(-v)
+      [ -n "$PATTERN" ] && ARGS+=(-k "$PATTERN")
+      [ "$COVERAGE" = "true" ] && ARGS+=(--cov=app --cov-report=term-missing --cov-report=html)
+      
+      docker compose exec -T app pytest "${ARGS[@]}"
+      
+      # Registra nel log non-regressione
+      TIMESTAMP=$(date -Iseconds)
+      CYCLE=$(cat .opencode/test-cycle.txt 2>/dev/null || echo "1")
+      
+      mkdir -p tests/results
+      echo "## Ciclo $CYCLE - $TIMESTAMP" >> tests/results/test-log.md
+      echo "### Funzionali${PATTERN:+ ($PATTERN)}" >> tests/results/test-log.md
+      echo "" >> tests/results/test-log.md
+
+  - name: "security"
+    description: "Esegue test di sicurezza (bandit, safety, custom)"
+    arguments:
+      - name: "type"
+        description: "Tipo: bandit, safety, secrets, all"
+        type: "string"
+        default: "all"
+    script: |
+      #!/bin/bash
+      set -e
+      
+      TYPE=${1:-all}
+      
+      echo "🔒 Test Sicurezza: $TYPE"
+      echo ""
+      
+      case $TYPE in
+          bandit|all)
+              echo "=== Bandit (static analysis) ==="
+              docker compose exec -T app bandit -r app/ -f json -o /tmp/bandit.json || true
+              docker compose exec -T app bandit -r app/ || true
+              echo ""
+              ;;
+      esac
+      
+      case $TYPE in
+          safety|all)
+              echo "=== Safety (dependencies) ==="
+              docker compose exec -T app safety check --json --output /tmp/safety.json || true
+              docker compose exec -T app safety check || true
+              echo ""
+              ;;
+      esac
+      
+      case $TYPE in
+          secrets|all)
+              echo "=== TruffleHog (secrets) ==="
+              docker compose exec -T app trufflehog filesystem /app --json || true
+              echo ""
+              ;;
+      esac
+      
+      # Registra nel log
+      TIMESTAMP=$(date -Iseconds)
+      CYCLE=$(cat .opencode/test-cycle.txt 2>/dev/null || echo "1")
+      
+      mkdir -p tests/results
+      echo "## Ciclo $CYCLE - $TIMESTAMP" >> tests/results/test-log.md
+      echo "### Sicurezza ($TYPE)" >> tests/results/test-log.md
+      echo "" >> tests/results/test-log.md
+
+  - name: "regression"
+    description: "Esegue suite non-regressione completa"
+    arguments:
+      - name: "cycle"
+        description: "Numero ciclo (default: auto da file)"
+        type: "number"
+        required: false
+    script: |
+      #!/bin/bash
+      set -e
+      
+      CYCLE=${1:-$(cat .opencode/test-cycle.txt 2>/dev/null || echo "1")}
+      
+      echo "🔄 Suite Non-Regressione - Ciclo $CYCLE"
+      echo ""
+      
+      # Salva ciclo corrente
+      echo "$CYCLE" > .opencode/test-cycle.txt
+      
+      # 1. Test funzionali completi
+      echo "=== 1/3 Test Funzionali ==="
+      $0 functional
+      
+      # 2. Test sicurezza
+      echo "=== 2/3 Test Sicurezza ==="
+      $0 security all
+      
+      # 3. Test integrazione API
+      echo "=== 3/3 Test Integrazione API ==="
+      docker compose exec -T app pytest tests/integration/ -v || true
+      
+      echo ""
+      echo "✅ Suite non-regressione completata"
+      echo "📝 Risultati in: tests/results/test-log.md"
+
+  - name: "init-log"
+    description: "Inizializza registro test non-regressione"
+    script: |
+      #!/bin/bash
+      
+      mkdir -p tests/results
+      
+      cat > tests/results/test-log.md << 'EOF'
+# Registro Test Non-Regressione - Security Dashboard
+
+Formato: Cosa testato | Esito | Ciclo | Note
+
+---
+
+EOF
+      
+      echo "1" > .opencode/test-cycle.txt
+      echo "✅ Registro inizializzato: tests/results/test-log.md"
+
+  - name: "next-cycle"
+    description: "Incrementa numero ciclo"
+    script: |
+      #!/bin/bash
+      
+      CURRENT=$(cat .opencode/test-cycle.txt 2>/dev/null || echo "0")
+      NEXT=$((CURRENT + 1))
+      echo "$NEXT" > .opencode/test-cycle.txt
+      echo "🔄 Ciclo avanzato: $CURRENT → $NEXT"
+
+  - name: "show-log"
+    description: "Mostra registro test"
+    arguments:
+      - name: "cycles"
+        description: "Ultimi N cicli (default: tutti)"
+        type: "number"
+        required: false
+    script: |
+      #!/bin/bash
+      
+      CYCLES=${1:-}
+      
+      if [ -f tests/results/test-log.md ]; then
+          if [ -n "$CYCLES" ]; then
+              # Mostra solo ultimi N cicli (approssimativo)
+              tail -n 200 tests/results/test-log.md | head -n $((CYCLES * 50))
+          else
+              cat tests/results/test-log.md
+          fi
+      else
+          echo "❌ Registro non trovato. Esegui: opencode skill test-runner init-log"
+      fi

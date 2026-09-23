@@ -1,0 +1,49 @@
+<!-- Critical Vulnerabilities Partial -->
+{% if vulns %}
+<div class="divide-y divide-gray-200">
+    {% for vuln in vulns %}
+    <div class="p-4 hover:bg-gray-50 cve-card cursor-pointer" 
+         hx-get="/api/cve/{{ vuln.cve.id }}" 
+         hx-target="#cve-modal-content" 
+         hx-swap="innerHTML"
+         hx-on::after-request="document.getElementById('cve-modal').classList.remove('hidden')"
+         onclick="openCveModal({{ vuln.cve.id }})">
+        <div class="flex items-start gap-4">
+            <div class="flex-shrink-0">
+                <span class="badge-{{ vuln.cve.cvss_v3_severity.value.lower() if vuln.cve.cvss_v3_severity else 'none' }} px-3 py-1 rounded-full text-xs font-medium">
+                    {{ vuln.cve.cvss_v3_severity.value if vuln.cve.cvss_v3_severity else 'N/A' }}
+                    {% if vuln.cve.cvss_v3_score %}({{ vuln.cve.cvss_v3_score }}){% endif %}
+                </span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <h4 class="font-medium text-gray-900 truncate">{{ vuln.cve.cve_id }}</h4>
+                    <span class="badge-{{ vuln.match_type.value }} px-2 py-0.5 rounded text-xs">
+                        {{ vuln.match_type.value.replace('_', ' ').title() }}
+                    </span>
+                    <span class="badge-{{ vuln.triage_status.value }} px-2 py-0.5 rounded text-xs">
+                        {{ vuln.triage_status.value.replace('_', ' ').title() }}
+                    </span>
+                </div>
+                <p class="text-sm text-gray-500 mt-1 truncate">{{ vuln.cve.description[:150] if vuln.cve.description else 'Nessuna descrizione' }}...</p>
+                <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                    <span>{{ vuln.asset.vendor }} - {{ vuln.asset.nome }}</span>
+                    {% if vuln.asset.versione %}<span>v{{ vuln.asset.versione }}</span>{% endif %}
+                    {% if vuln.asset.criticita %}<span class="px-2 py-0.5 bg-gray-100 rounded">{{ vuln.asset.criticita.value }}</span>{% endif %}
+                </div>
+            </div>
+            <div class="text-right text-sm text-gray-500">
+                {% if vuln.cve.published_date %}
+                {{ vuln.cve.published_date.strftime('%d/%m/%Y') }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="p-6 text-center text-gray-500">
+    <i class="fas fa-check-circle text-green-500 text-3xl mb-2"></i>
+    <p>Nessuna vulnerabilità critica/alta sul perimetro</p>
+</div>
+{% endif %}

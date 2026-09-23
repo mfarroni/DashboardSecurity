@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Perimetro - Security Dashboard{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="text-xl font-semibold text-gray-900">Security Dashboard</a>
+                    <span class="mx-2 text-gray-400">/</span>
+                    <span class="text-gray-600">Perimetro</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/vulnerabilita" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Vulnerabilità</a>
+                    <a href="/feed" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Feed</a>
+                    <a href="/syslog" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Syslog</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header with actions -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Perimetro di Sicurezza</h1>
+                <p class="text-gray-500 mt-1">Gestione asset hardware e software</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('import-modal').classList.remove('hidden')" 
+                        class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
+                    <i class="fas fa-upload mr-2"></i>Importa Asset
+                </button>
+                <a href="/api/assets/export/current" download="perimetro.csv"
+                   class="bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700">
+                    <i class="fas fa-download mr-2"></i>Esporta CSV
+                </a>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+            <div class="flex flex-wrap gap-4">
+                <select id="filter-tipo" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        hx-get="/api/dashboard/api/perimetro" hx-target="#assets-table" hx-trigger="change">
+                    <option value="">Tutti i tipi</option>
+                    <option value="hardware">Hardware</option>
+                    <option value="software">Software</option>
+                </select>
+                <select id="filter-criticita" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        hx-get="/api/dashboard/api/perimetro" hx-target="#assets-table" hx-trigger="change">
+                    <option value="">Tutte criticità</option>
+                    <option value="produzione">Produzione</option>
+                    <option value="test">Test</option>
+                    <option value="dismesso">Dismesso</option>
+                </select>
+                <select id="filter-has-vulns" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        hx-get="/api/dashboard/api/perimetro" hx-target="#assets-table" hx-trigger="change">
+                    <option value="">Tutti</option>
+                    <option value="true">Con vulnerabilità</option>
+                    <option value="false">Senza vulnerabilità</option>
+                </select>
+                <input type="text" id="filter-search" placeholder="Cerca (nome, vendor, versione, CPE)..." 
+                       class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64"
+                       hx-get="/api/assets" hx-target="#assets-table" hx-trigger="keyup changed delay:300ms"
+                       hx-include="[id='filter-tipo'],[id='filter-criticita']">
+            </div>
+        </div>
+
+        <!-- Assets Table -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asset</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Criticità</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CPE</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vulnerabilità</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assets-table" class="divide-y divide-gray-200" hx-get="/api/dashboard/api/perimetro" hx-trigger="load">
+                        <tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">Caricamento...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination would go here -->
+    </main>
+
+    <!-- Import Modal -->
+    <div id="import-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4" onclick="closeImportModal(event)">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                <h2 class="text-lg font-semibold">Importa Perimetro</h2>
+                <button onclick="closeImportModal({target:{id:'import-modal'}})" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">File (CSV, Excel, JSON)</label>
+                    <input type="file" id="import-file" accept=".csv,.xlsx,.xls,.json" 
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <button onclick="previewImport()" class="bg-gray-600 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-700">
+                        <i class="fas fa-eye mr-2"></i>Anteprima & Mapping
+                    </button>
+                </div>
+                <div id="import-preview" class="hidden">
+                    <div class="border border-gray-200 rounded-md p-4 max-h-64 overflow-y-auto">
+                        <h3 class="font-medium mb-2">Mapping Colonne</h3>
+                        <div id="mapping-editor" class="space-y-2 text-sm"></div>
+                    </div>
+                    <div class="mt-4">
+                        <button onclick="executeImport()" class="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700 mr-2">
+                            <i class="fas fa-check mr-2"></i>Esegui Import
+                        </button>
+                        <button onclick="closeImportModal({target:{id:'import-modal'}})" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-400">
+                            Annulla
+                        </button>
+                    </div>
+                </div>
+                <div id="import-result" class="hidden"></div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentMapping = {};
+
+    function closeImportModal(event) {
+        if (event.target.id === 'import-modal') {
+            document.getElementById('import-modal').classList.add('hidden');
+            resetImportModal();
+        }
+    }
+
+    function resetImportModal() {
+        document.getElementById('import-file').value = '';
+        document.getElementById('import-preview').classList.add('hidden');
+        document.getElementById('import-result').classList.add('hidden').innerHTML = '';
+        currentMapping = {};
+    }
+
+    function previewImport() {
+        const file = document.getElementById('import-file').files[0];
+        if (!file) {
+            alert('Seleziona un file');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/api/assets/import/preview', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            currentMapping = data.suggested_mapping || {};
+            renderMappingEditor(data);
+            document.getElementById('import-preview').classList.remove('hidden');
+        })
+        .catch(err => alert('Errore: ' + err));
+    }
+
+    function renderMappingEditor(data) {
+        const container = document.getElementById('mapping-editor');
+        const headers = data.headers || [];
+        const required = ['tipo', 'nome', 'vendor'];
+        
+        let html = '<table class="w-full"><thead><tr><th class="text-left pb-2">Campo Destinazione</th><th class="text-left pb-2">Colonna Sorgente</th><th class="text-left pb-2">Obbligatorio</th></tr></thead><tbody>';
+        
+        const fields = [
+            {key: 'tipo', label: 'Tipo (hardware/software)'},
+            {key: 'nome', label: 'Nome/Modello'},
+            {key: 'vendor', label: 'Vendor/Produttore'},
+            {key: 'versione', label: 'Versione'},
+            {key: 'cpe', label: 'CPE'},
+            {key: 'criticita', label: 'Criticità'},
+            {key: 'note', label: 'Note'}
+        ];
+
+        fields.forEach(f => {
+            const suggested = currentMapping[f.key] || '';
+            const options = ['-- Ignora --', ...headers].map(h => 
+                `<option value="${h}" ${h === suggested ? 'selected' : ''}>${h === '-- Ignora --' ? 'Ignora' : h}</option>`
+            ).join('');
+            
+            const isRequired = required.includes(f.key);
+            html += `<tr class="border-t border-gray-100">
+                <td class="py-2">${f.label}</td>
+                <td class="py-2"><select class="mapping-select border border-gray-300 rounded px-2 py-1 text-sm w-full" data-field="${f.key}">${options}</select></td>
+                <td class="py-2">${isRequired ? '<span class="text-red-500">*</span>' : ''}</td>
+            </tr>`;
+        });
+        
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function executeImport() {
+        const file = document.getElementById('import-file').files[0];
+        if (!file) return;
+
+        // Collect mapping from selects
+        const mapping = {};
+        document.querySelectorAll('.mapping-select').forEach(sel => {
+            const val = sel.value;
+            if (val && val !== '-- Ignora --') {
+                mapping[sel.dataset.field] = val;
+            }
+        });
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('mapping', JSON.stringify(mapping));
+
+        fetch('/api/assets/import/execute', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('import-result').classList.remove('hidden').innerHTML = 
+                `<div class="p-4 bg-green-50 border border-green-200 rounded">
+                    <h4 class="font-medium text-green-800">Import Completato</h4>
+                    <p class="text-sm text-green-700 mt-1">Importati: ${data.records_imported} | Falliti: ${data.records_failed}</p>
+                    ${data.errors ? `<details class="mt-2"><summary class="text-sm font-medium">Errori (${data.errors.length})</summary><ul class="text-xs text-red-600 mt-1">${data.errors.map(e => `<li>${e}</li>`).join('')}</ul></details>` : ''}
+                </div>`;
+            // Refresh table
+            htmx.ajax('GET', '/api/dashboard/api/perimetro', { target: '#assets-table', swap: 'innerHTML' });
+        })
+        .catch(err => alert('Errore: ' + err));
+    }
+
+    // Close modal on Escape
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.getElementById('import-modal').classList.add('hidden');
+            resetImportModal();
+        }
+    });
+</script>
+{% endblock %}
