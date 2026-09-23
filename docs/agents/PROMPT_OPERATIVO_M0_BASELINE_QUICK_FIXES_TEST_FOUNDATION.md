@@ -1,3 +1,23 @@
+# ISTRUZIONI DI AVVIO OPERATIVO
+
+**IMPORTANTE: questo prompt non deve essere eseguito come testo isolato. Deve essere utilizzato nel contesto del repository GitHub già collegato all'agente.**
+
+Prima di iniziare qualsiasi attività, esegui queste istruzioni operative:
+
+> Prendi in carico il repository `mfarroni/DashboardSecurity`. Sei autorizzato esclusivamente all’esecuzione della Milestone M0 secondo il prompt operativo riportato sotto. Il branch di lavoro autorizzato è `architecture/initial-design`. Non modificare `main`. Leggi prima i documenti indicati nel prompt e verifica lo stato reale del repository. Non iniziare alcuna attività M1 o successiva.
+
+Regole vincolanti:
+
+1. Lavora sul repository GitHub già collegato, non su una copia o su un repository alternativo.
+2. Verifica esplicitamente che il branch corrente sia `architecture/initial-design` prima di modificare qualsiasi file.
+3. Se il branch corrente è diverso, **non apportare modifiche**: segnala il problema e fermati, salvo che il passaggio al branch autorizzato sia già consentito dall'ambiente operativo.
+4. Verifica working tree, commit HEAD e stato reale del repository prima di iniziare.
+5. Il testo di questo documento costituisce il prompt operativo completo di M0 e deve essere seguito integralmente.
+6. Il fatto che il repository sia già collegato non costituisce autorizzazione a modificare `main` né ad avviare milestone successive.
+7. Al termine di M0 devi fermarti e attendere una nuova autorizzazione umana.
+
+---
+
 # PROMPT OPERATIVO M0 — BASELINE, QUICK FIXES E TEST FOUNDATION
 
 ## Ruolo
