@@ -14,6 +14,8 @@ L'applicazione attuale si presenta come un monolito leggero basato su FastAPI co
 - **Limiti**: Mancanza di elaborazione asincrona in background, potenziale blocco dei worker su file di grandi dimensioni, assenza di pipeline di ingestion e detection a stadi separati.
 
 ### 1.2 Architettura Target (Modular Security Analytics Platform)
+
+> **Architecture Gate 2.1:** il Web Service FastAPI su Render è stateless rispetto ai job periodici. La sincronizzazione NVD/Feed è demandata a un componente scheduler dedicato, preferibilmente Render Cron Job, con job idempotenti e controllo di non sovrapposizione. Riferimento: `DEPLOYMENT_ARCHITECTURE.md`.
 L'architettura target riorganizza il sistema in moduli disaccoppiati conformi alla pipeline a 10 stadi:
 
 ```text
@@ -80,4 +82,4 @@ L'architettura target riorganizza il sistema in moduli disaccoppiati conformi al
 | **Auth & Security** | Inesistente | FastAPI Security + Passlib/Bcrypt + JWT / Session | Blocco di sicurezza fondamentale |
 | **Parsing & Ingestion** | Sincrono in-memory | Asincrono con guards su dimensioni file | Prevenzione crash OOM e DoS |
 | **Correlation Engine** | Loop CPU `difflib` | FTS5 Indexing + Task Background | Scalabilità e tempi di risposta API < 200ms |
-| **Scheduler** | Inattivo | Background Loop integrato nel lifespan FastAPI | Automazione sync NVD e Feed |
+| **Scheduler** | Inattivo | Render Cron Job / worker singolo, fuori dal lifespan Web Service | Evitare duplicazione job in scaling orizzontale |
