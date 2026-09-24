@@ -59,7 +59,7 @@ async def list_assets(
     
     items = []
     for asset in assets:
-        asset_dict = AssetResponse.model_validate(asset).model_dump()
+        asset_dict = AssetResponse.from_orm(asset).dict()
         asset_dict["vulnerability_count"] = vuln_counts.get(asset.id, 0)
         items.append(asset_dict)
     
@@ -84,7 +84,7 @@ async def get_asset(asset_id: int, db: Session = Depends(get_db)):
         AssetVulnerability.asset_id == asset_id
     ).scalar()
     
-    asset_dict = AssetResponse.model_validate(asset).model_dump()
+    asset_dict = AssetResponse.from_orm(asset).dict()
     asset_dict["vulnerability_count"] = vuln_count
     return asset_dict
 
@@ -97,11 +97,11 @@ async def create_asset(asset: AssetCreate, db: Session = Depends(get_db)):
         if existing:
             raise HTTPException(status_code=400, detail="CPE già esistente")
     
-    db_asset = Asset(**asset.model_dump())
+    db_asset = Asset(**asset.dict())
     db.add(db_asset)
     db.commit()
     db.refresh(db_asset)
-    return AssetResponse.model_validate(db_asset)
+    return AssetResponse.from_orm(db_asset)
 
 
 @router.patch("/{asset_id}", response_model=AssetResponse)
@@ -110,7 +110,7 @@ async def update_asset(asset_id: int, asset_update: AssetUpdate, db: Session = D
     if not asset:
         raise HTTPException(status_code=404, detail="Asset non trovato")
     
-    update_data = asset_update.model_dump(exclude_unset=True)
+    update_data = asset_update.dict(exclude_unset=True)
     
     # Check CPE uniqueness if being updated
     if "cpe" in update_data and update_data["cpe"]:
@@ -127,7 +127,7 @@ async def update_asset(asset_id: int, asset_update: AssetUpdate, db: Session = D
     asset.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(asset)
-    return AssetResponse.model_validate(asset)
+    return AssetResponse.from_orm(asset)
 
 
 @router.delete("/{asset_id}", status_code=204)
@@ -304,7 +304,7 @@ async def execute_import(
         db.commit()
         raise HTTPException(status_code=500, detail=f"Errore import: {str(e)}")
     
-    return ImportBatchResponse.model_validate(batch)
+    return ImportBatchResponse.from_orm(batch)
 
 
 @router.get("/import/history", response_model=List[ImportBatchResponse])
@@ -315,7 +315,7 @@ async def import_history(
     batches = db.query(ImportBatch).filter(
         ImportBatch.import_type == "perimetro"
     ).order_by(desc(ImportBatch.started_at)).limit(limit).all()
-    return [ImportBatchResponse.model_validate(b) for b in batches]
+    return [ImportBatchResponse.from_orm(b) for b in batches]
 
 
 @router.get("/export/current")

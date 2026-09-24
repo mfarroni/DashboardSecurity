@@ -223,7 +223,7 @@ async def list_syslog(
     total = query.count()
     entries = query.order_by(desc(SyslogEntry.timestamp)).offset((page - 1) * page_size).limit(page_size).all()
     
-    items = [SyslogEntryResponse.model_validate(e).model_dump() for e in entries]
+    items = [SyslogEntryResponse.from_orm(e).dict() for e in entries]
     
     return PaginatedResponse(
         items=items,
@@ -352,7 +352,7 @@ async def import_syslog(
         db.commit()
         raise HTTPException(status_code=500, detail=f"Errore import: {str(e)}")
     
-    return ImportBatchResponse.model_validate(batch)
+    return ImportBatchResponse.from_orm(batch)
 
 
 @router.get("/import/history", response_model=List[ImportBatchResponse])
@@ -363,7 +363,7 @@ async def syslog_import_history(
     batches = db.query(ImportBatch).filter(
         ImportBatch.import_type == "syslog"
     ).order_by(desc(ImportBatch.started_at)).limit(limit).all()
-    return [ImportBatchResponse.model_validate(b) for b in batches]
+    return [ImportBatchResponse.from_orm(b) for b in batches]
 
 
 @router.delete("/clear")

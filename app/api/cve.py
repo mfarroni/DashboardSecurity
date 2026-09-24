@@ -195,7 +195,7 @@ async def list_cves(
     
     items = []
     for cve in cves:
-        item_dict = CVEResponse.model_validate(cve).model_dump()
+        item_dict = CVEResponse.from_orm(cve).dict()
         item_dict["asset_count"] = asset_counts.get(cve.id, 0)
         item_dict["feed_count"] = feed_counts.get(cve.id, 0)
         items.append(item_dict)
@@ -249,7 +249,7 @@ async def get_cve_detail(cve_id: int, db: Session = Depends(get_db)):
                 "published_at": feed.published_at,
             })
     
-    result = CVEDetailResponse.model_validate(cve).model_dump()
+    result = CVEDetailResponse.from_orm(cve).dict()
     result["affected_assets"] = affected_assets
     result["feed_references"] = feed_references
     return result
@@ -358,7 +358,7 @@ async def update_asset_vuln_triage(
     
     db.commit()
     db.refresh(av)
-    return AssetVulnerabilityResponse.model_validate(av)
+    return AssetVulnerabilityResponse.from_orm(av)
 
 
 @router.get("/asset/{asset_id}/vulnerabilities", response_model=List[AssetVulnerabilityResponse])
@@ -376,7 +376,7 @@ async def get_asset_vulnerabilities(
         query = query.filter(AssetVulnerability.triage_status == triage_status)
     
     vulns = query.order_by(desc(AssetVulnerability.detected_at)).all()
-    return [AssetVulnerabilityResponse.model_validate(v) for v in vulns]
+    return [AssetVulnerabilityResponse.from_orm(v) for v in vulns]
 
 
 @router.post("/correlate-asset/{asset_id}")

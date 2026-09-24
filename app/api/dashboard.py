@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, Request, Query
 from fastapi.responses import HTMLResponse
-from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, and_, or_
 from typing import List, Optional
@@ -139,7 +138,7 @@ async def get_perimetro_with_vulns(
         if has_vulns is False and vulns:
             continue
         
-        vuln_responses = [AssetWithVulnsResponse.model_validate(v) for v in vulns]
+        vuln_responses = [AssetVulnerabilityResponse.from_orm(v) for v in vulns]
         
         critical = sum(1 for v in vulns if v.cve and v.cve.cvss_v3_severity == CVESeverity.CRITICAL)
         high = sum(1 for v in vulns if v.cve and v.cve.cvss_v3_severity == CVESeverity.HIGH)
@@ -186,7 +185,7 @@ async def get_vulnerabilita(
     total = query.count()
     vulns = query.order_by(desc(CVE.published_date)).offset((page - 1) * page_size).limit(page_size).all()
     
-    items = [AssetVulnerabilityResponse.model_validate(v).model_dump() for v in vulns]
+    items = [AssetVulnerabilityResponse.from_orm(v).dict() for v in vulns]
     
     return PaginatedResponse(
         items=items,
@@ -198,14 +197,14 @@ async def get_vulnerabilita(
 
 
 @router.get("/api/dashboard/critical-vulns", response_class=HTMLResponse)
-async def get_critical_vulns(db: Session = Depends(get_db)):
+async def get_critical_vulns(request: Request, db: Session = Depends(get_db)):
     """Partial: Critical/High vulnerabilities on perimeter"""
     vulns = db.query(AssetVulnerability).join(CVE).join(Asset).filter(
         CVE.cvss_v3_severity.in_([CVESeverity.CRITICAL, CVESeverity.HIGH])
     ).order_by(desc(CVE.published_date)).limit(10).all()
     
     return request.app.state.templates.TemplateResponse("partials/critical_vulns.html", {
-        "request": Request, "vulns": vulns
+        "request": request, "vulns": vulns
     })
 
 

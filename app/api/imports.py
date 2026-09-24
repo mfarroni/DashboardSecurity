@@ -26,7 +26,7 @@ async def list_import_batches(
         query = query.filter(ImportBatch.status == status)
     
     batches = query.order_by(desc(ImportBatch.started_at)).limit(limit).all()
-    return [ImportBatchResponse.model_validate(b) for b in batches]
+    return [ImportBatchResponse.from_orm(b) for b in batches]
 
 
 @router.get("/{batch_id}", response_model=ImportBatchResponse)
@@ -34,7 +34,7 @@ async def get_import_batch(batch_id: str, db: Session = Depends(get_db)):
     batch = db.query(ImportBatch).filter(ImportBatch.batch_id == batch_id).first()
     if not batch:
         raise HTTPException(status_code=404, detail="Batch non trovato")
-    return ImportBatchResponse.model_validate(batch)
+    return ImportBatchResponse.from_orm(batch)
 
 
 @router.delete("/{batch_id}")

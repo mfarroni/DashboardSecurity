@@ -1,8 +1,15 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
+from app.core.database import init_db
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def setup_db():
+    """Assicura l'inizializzazione del database SQLite prima dei test."""
+    init_db()
 
 
 def test_health_check():
@@ -33,8 +40,19 @@ def test_settings_init():
     assert "created" in data
 
 
-# Test models (require DB)
-@pytest.mark.skip(reason="Richiede database - run con docker compose")
+def test_cve_detail_page_regression():
+    """M0.1 Regression test: /cve/{cve_id} carica il template senza produrre TemplateNotFound"""
+    response = client.get("/cve/1")
+    assert response.status_code == 200
+    assert "Dettaglio CVE" in response.text
+
+
+def test_critical_vulns_partial_regression():
+    """M0.2 Regression test: /api/dashboard/critical-vulns restituisce partial senza NameError"""
+    response = client.get("/api/dashboard/critical-vulns")
+    assert response.status_code == 200
+
+
 def test_asset_crud():
     """CRUD Asset base"""
     # Create
@@ -63,7 +81,7 @@ def test_asset_crud():
     assert response.status_code == 204
 
 
-@pytest.mark.skip(reason="Richiede database - run con docker compose")
+@pytest.mark.skip(reason="Richiede connessione API NVD esterna / rate limit")
 def test_cve_sync_nvd():
     """Sync NVD (richiede API key o rate limit pubblico)"""
     response = client.post("/api/cve/sync/nvd?days=1")

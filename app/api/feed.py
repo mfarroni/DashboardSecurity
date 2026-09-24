@@ -79,7 +79,7 @@ async def list_feed_items(
     
     result_items = []
     for item in items:
-        item_dict = FeedItemResponse.model_validate(item).model_dump()
+        item_dict = FeedItemResponse.from_orm(item).dict()
         item_dict["cve_count"] = cve_counts.get(item.id, 0)
         result_items.append(item_dict)
     
@@ -97,7 +97,7 @@ async def get_feed_item(item_id: int, db: Session = Depends(get_db)):
     item = db.query(FeedItem).filter(FeedItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Feed item non trovato")
-    return FeedItemResponse.model_validate(item)
+    return FeedItemResponse.from_orm(item)
 
 
 @router.post("/import/feedhub", response_model=ImportBatchResponse)
@@ -202,7 +202,7 @@ async def import_feedhub_file(
         db.commit()
         raise HTTPException(status_code=500, detail=f"Errore import: {str(e)}")
     
-    return ImportBatchResponse.model_validate(batch)
+    return ImportBatchResponse.from_orm(batch)
 
 
 @router.post("/import/cti", response_model=ImportBatchResponse)
@@ -320,7 +320,7 @@ async def import_cti_file(
         db.commit()
         raise HTTPException(status_code=500, detail=f"Errore import: {str(e)}")
     
-    return ImportBatchResponse.model_validate(batch)
+    return ImportBatchResponse.from_orm(batch)
 
 
 @router.get("/import/history", response_model=List[ImportBatchResponse])
@@ -331,4 +331,4 @@ async def feed_import_history(
     batches = db.query(ImportBatch).filter(
         ImportBatch.import_type.in_(["feedhub", "cti"])
     ).order_by(desc(ImportBatch.started_at)).limit(limit).all()
-    return [ImportBatchResponse.model_validate(b) for b in batches]
+    return [ImportBatchResponse.from_orm(b) for b in batches]
