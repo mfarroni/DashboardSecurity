@@ -53,6 +53,13 @@ def test_critical_vulns_partial_regression():
     assert response.status_code == 200
 
 
+def test_overview_cards_partial():
+    """Test partial HTML overview cards per dashboard"""
+    response = client.get("/api/dashboard/overview-cards")
+    assert response.status_code == 200
+    assert "Asset Totali" in response.text
+
+
 def test_asset_crud():
     """CRUD Asset base"""
     # Create

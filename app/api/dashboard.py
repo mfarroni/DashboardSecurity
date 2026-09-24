@@ -115,6 +115,15 @@ async def get_overview(db: Session = Depends(get_db)):
     )
 
 
+@router.get("/api/dashboard/overview-cards", response_class=HTMLResponse)
+async def get_overview_cards(request: Request, db: Session = Depends(get_db)):
+    """Partial: Overview Stats Cards for Dashboard"""
+    overview = await get_overview(db=db)
+    return request.app.state.templates.TemplateResponse("partials/overview_cards.html", {
+        "request": request, "overview": overview
+    })
+
+
 @router.get("/api/perimetro", response_model=List[AssetWithVulnsResponse])
 async def get_perimetro_with_vulns(
     criticita: Optional[AssetCriticality] = None,
