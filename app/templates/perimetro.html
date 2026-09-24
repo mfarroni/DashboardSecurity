@@ -50,14 +50,14 @@
                     <option value="software">Software</option>
                 </select>
                 <select id="filter-criticita" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        hx-get="/api/dashboard/api/perimetro" hx-target="#assets-table" hx-trigger="change">
+                        hx-get="/api/perimetro" hx-target="#assets-table" hx-trigger="change">
                     <option value="">Tutte criticità</option>
                     <option value="produzione">Produzione</option>
                     <option value="test">Test</option>
                     <option value="dismesso">Dismesso</option>
                 </select>
                 <select id="filter-has-vulns" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        hx-get="/api/dashboard/api/perimetro" hx-target="#assets-table" hx-trigger="change">
+                        hx-get="/api/perimetro" hx-target="#assets-table" hx-trigger="change">
                     <option value="">Tutti</option>
                     <option value="true">Con vulnerabilità</option>
                     <option value="false">Senza vulnerabilità</option>
@@ -83,7 +83,7 @@
                             <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Azioni</th>
                         </tr>
                     </thead>
-                    <tbody id="assets-table" class="divide-y divide-gray-200" hx-get="/api/dashboard/api/perimetro" hx-trigger="load">
+                    <tbody id="assets-table" class="divide-y divide-gray-200" hx-get="/api/perimetro" hx-trigger="load">
                         <tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">Caricamento...</td></tr>
                     </tbody>
                 </table>
@@ -239,7 +239,7 @@
                     ${data.errors ? `<details class="mt-2"><summary class="text-sm font-medium">Errori (${data.errors.length})</summary><ul class="text-xs text-red-600 mt-1">${data.errors.map(e => `<li>${e}</li>`).join('')}</ul></details>` : ''}
                 </div>`;
             // Refresh table
-            htmx.ajax('GET', '/api/dashboard/api/perimetro', { target: '#assets-table', swap: 'innerHTML' });
+            htmx.ajax('GET', '/api/perimetro', { target: '#assets-table', swap: 'innerHTML' });
         })
         .catch(err => alert('Errore: ' + err));
     }

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_, and_
 from typing import List, Optional
@@ -184,8 +184,11 @@ def find_cve_correlations(db: Session, entry: SyslogEntry) -> List[str]:
     return list(cve_ids)
 
 
-@router.get("", response_model=PaginatedResponse)
+from fastapi.responses import HTMLResponse
+
+@router.get("")
 async def list_syslog(
+    request: Request,
     page: int = Query(1, ge=1),
     page_size: int = Query(100, ge=1, le=500),
     hostname: Optional[str] = None,
@@ -223,6 +226,25 @@ async def list_syslog(
     total = query.count()
     entries = query.order_by(desc(SyslogEntry.timestamp)).offset((page - 1) * page_size).limit(page_size).all()
     
+    if request.headers.get("hx-request"):
+        if not entries:
+            return HTMLResponse('<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">Nessun log trovato</td></tr>')
+        html_rows = ""
+        for entry in entries:
+            timestamp_str = entry.timestamp.strftime('%d/%m/%Y %H:%M:%S') if entry.timestamp else "N/D"
+            cve_badge = f'<span class="badge-textual px-2 py-0.5 rounded text-xs">{", ".join(entry.matched_cve_ids)}</span>' if entry.matched_cve_ids else '<span class="text-xs text-gray-400">-</span>'
+            sev_class = "text-red-600 font-bold" if entry.severity in ["emerg", "alert", "crit", "err", "error", "critical"] else "text-gray-700"
+            html_rows += f'''
+            <tr class="table-row border-b border-gray-100">
+                <td class="px-4 py-3 text-xs text-gray-500 font-mono">{timestamp_str}</td>
+                <td class="px-4 py-3 text-xs font-semibold uppercase {sev_class}">{entry.severity or 'N/D'}</td>
+                <td class="px-4 py-3 text-xs font-medium text-gray-900">{entry.hostname or 'N/D'}</td>
+                <td class="px-4 py-3 text-xs text-gray-600 font-mono break-all">{entry.message or ''}</td>
+                <td class="px-4 py-3 text-xs text-gray-500">{cve_badge}</td>
+            </tr>
+            '''
+        return HTMLResponse(html_rows)
+
     items = [SyslogEntryResponse.from_orm(e).dict() for e in entries]
     
     return PaginatedResponse(

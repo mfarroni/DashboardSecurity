@@ -35,7 +35,7 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Severità</label>
                     <select id="filter-severity" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            hx-get="/api/dashboard/api/vulnerabilita" hx-target="#vulns-table" hx-trigger="change"
+                            hx-get="/api/vulnerabilita" hx-target="#vulns-table" hx-trigger="change"
                             hx-include="[id='filter-triage'],[id='filter-asset'],[id='filter-source'],[id='filter-days']">
                         <option value="">Tutte</option>
                         <option value="CRITICAL">Critica</option>
@@ -47,7 +47,7 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Stato Triage</label>
                     <select id="filter-triage" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            hx-get="/api/dashboard/api/vulnerabilita" hx-target="#vulns-table" hx-trigger="change"
+                            hx-get="/api/vulnerabilita" hx-target="#vulns-table" hx-trigger="change"
                             hx-include="[id='filter-severity'],[id='filter-asset'],[id='filter-source'],[id='filter-days']">
                         <option value="">Tutti</option>
                         <option value="nuova">Nuova</option>
@@ -59,7 +59,7 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Asset</label>
                     <select id="filter-asset" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-48"
-                            hx-get="/api/dashboard/api/vulnerabilita" hx-target="#vulns-table" hx-trigger="change"
+                            hx-get="/api/vulnerabilita" hx-target="#vulns-table" hx-trigger="change"
                             hx-include="[id='filter-severity'],[id='filter-triage'],[id='filter-source'],[id='filter-days']">
                         <option value="">Tutti</option>
                     </select>
@@ -67,7 +67,7 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Fonte</label>
                     <select id="filter-source" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            hx-get="/api/dashboard/api/vulnerabilita" hx-target="#vulns-table" hx-trigger="change"
+                            hx-get="/api/vulnerabilita" hx-target="#vulns-table" hx-trigger="change"
                             hx-include="[id='filter-severity'],[id='filter-triage'],[id='filter-asset'],[id='filter-days']">
                         <option value="">Tutte</option>
                         <option value="nvd">NVD</option>
@@ -78,7 +78,7 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Periodo</label>
                     <select id="filter-days" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            hx-get="/api/dashboard/api/vulnerabilita" hx-target="#vulns-table" hx-trigger="change"
+                            hx-get="/api/vulnerabilita" hx-target="#vulns-table" hx-trigger="change"
                             hx-include="[id='filter-severity'],[id='filter-triage'],[id='filter-asset'],[id='filter-source']">
                         <option value="">Tutto</option>
                         <option value="7">Ultimi 7 giorni</option>
@@ -105,7 +105,7 @@
                             <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Azioni</th>
                         </tr>
                     </thead>
-                    <tbody id="vulns-table" class="divide-y divide-gray-200" hx-get="/api/dashboard/api/vulnerabilita" hx-trigger="load">
+                    <tbody id="vulns-table" class="divide-y divide-gray-200" hx-get="/api/vulnerabilita" hx-trigger="load">
                         <tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">Caricamento...</td></tr>
                     </tbody>
                 </table>

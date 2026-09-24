@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_, desc, and_
 from typing import List, Optional
@@ -32,8 +32,11 @@ def extract_cves(text: str) -> List[str]:
     return list(set(m.upper() for m in matches))
 
 
-@router.get("", response_model=PaginatedResponse)
+from fastapi.responses import HTMLResponse
+
+@router.get("")
 async def list_feed_items(
+    request: Request,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     source: Optional[FeedSourceType] = None,
@@ -67,7 +70,28 @@ async def list_feed_items(
     total = query.count()
     items = query.order_by(desc(FeedItem.collected_at)).offset((page - 1) * page_size).limit(page_size).all()
     
-    # Add CVE count
+    if request.headers.get("hx-request"):
+        if not items:
+            return HTMLResponse('<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">Nessun feed item trovato</td></tr>')
+        html_rows = ""
+        for item in items:
+            source_name = item.source_name or (item.source.value if item.source else "")
+            pub_date = item.published_at.strftime('%d/%m/%Y %H:%M') if item.published_at else "N/D"
+            cve_badge = f'<span class="badge-textual px-2 py-0.5 rounded text-xs">{len(item.extracted_cves)} CVE</span>' if item.extracted_cves else '<span class="text-xs text-gray-400">-</span>'
+            url_link = f'<a href="{item.url}" target="_blank" class="text-blue-600 hover:text-blue-800"><i class="fas fa-external-link-alt"></i> Apri</a>' if item.url else ''
+            title_link = f'<a href="{item.url}" target="_blank" class="hover:underline hover:text-blue-600">{item.title}</a>' if item.url else item.title
+            html_rows += f'''
+            <tr class="table-row border-b border-gray-100">
+                <td class="px-4 py-3 text-sm font-medium text-gray-900">{title_link}</td>
+                <td class="px-4 py-3 text-sm text-gray-500">{source_name}</td>
+                <td class="px-4 py-3 text-sm text-gray-500">{pub_date}</td>
+                <td class="px-4 py-3 text-sm text-gray-500">{cve_badge}</td>
+                <td class="px-4 py-3 text-sm text-right">{url_link}</td>
+            </tr>
+            '''
+        return HTMLResponse(html_rows)
+
+    # Add CVE count for REST API JSON response
     item_ids = [i.id for i in items]
     cve_counts = {}
     if item_ids:

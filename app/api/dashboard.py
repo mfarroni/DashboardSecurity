@@ -124,8 +124,9 @@ async def get_overview_cards(request: Request, db: Session = Depends(get_db)):
     })
 
 
-@router.get("/api/perimetro", response_model=List[AssetWithVulnsResponse])
+@router.get("/api/perimetro")
 async def get_perimetro_with_vulns(
+    request: Request,
     criticita: Optional[AssetCriticality] = None,
     has_vulns: Optional[bool] = None,
     db: Session = Depends(get_db),
@@ -163,11 +164,36 @@ async def get_perimetro_with_vulns(
             low_count=low,
         ))
     
+    if request.headers.get("hx-request"):
+        if not result:
+            return HTMLResponse('<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">Nessun asset presente nel perimetro</td></tr>')
+        html_rows = ""
+        for item in result:
+            asset = item.asset
+            crit_badge = f'<span class="badge-{asset.criticita.value} px-2 py-0.5 rounded text-xs">{asset.criticita.value}</span>' if asset.criticita else '<span class="text-xs text-gray-400">-</span>'
+            cpe_val = f'<code class="text-xs text-gray-600 bg-gray-100 px-1 py-0.5 rounded">{asset.cpe}</code>' if asset.cpe else '<span class="text-xs text-gray-400">-</span>'
+            vuln_badge = f'<span class="badge-critical px-2 py-0.5 rounded text-xs">{item.critical_count + item.high_count} critiche</span>' if (item.critical_count + item.high_count) > 0 else '<span class="text-xs text-green-600">OK</span>'
+            html_rows += f'''
+            <tr class="table-row border-b border-gray-100">
+                <td class="px-4 py-3 text-sm font-medium text-gray-900">{asset.vendor} {asset.nome} <span class="text-xs text-gray-500">{asset.versione or ''}</span></td>
+                <td class="px-4 py-3 text-sm text-gray-500 uppercase text-xs">{asset.tipo.value}</td>
+                <td class="px-4 py-3 text-sm text-gray-500">{crit_badge}</td>
+                <td class="px-4 py-3 text-sm text-gray-500">{cpe_val}</td>
+                <td class="px-4 py-3 text-sm text-gray-500">{vuln_badge}</td>
+                <td class="px-4 py-3 text-sm text-right">
+                    <button onclick="editAsset({asset.id})" class="text-blue-600 hover:text-blue-800 text-xs mr-2"><i class="fas fa-edit"></i></button>
+                    <button onclick="deleteAsset({asset.id})" class="text-red-600 hover:text-red-800 text-xs"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+            '''
+        return HTMLResponse(html_rows)
+
     return result
 
 
-@router.get("/api/vulnerabilita", response_model=PaginatedResponse)
+@router.get("/api/vulnerabilita")
 async def get_vulnerabilita(
+    request: Request,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     severity: Optional[CVESeverity] = None,
@@ -194,6 +220,36 @@ async def get_vulnerabilita(
     total = query.count()
     vulns = query.order_by(desc(CVE.published_date)).offset((page - 1) * page_size).limit(page_size).all()
     
+    if request.headers.get("hx-request"):
+        if not vulns:
+            return HTMLResponse('<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">Nessuna vulnerabilità trovata</td></tr>')
+        html_rows = ""
+        for v in vulns:
+            cve_id = v.cve.cve_id if v.cve else "N/D"
+            sev = v.cve.cvss_v3_severity.value if (v.cve and v.cve.cvss_v3_severity) else "NONE"
+            sev_badge = f'<span class="badge-{sev.lower()} px-2 py-0.5 rounded text-xs">{sev}</span>'
+            asset_name = f"{v.asset.vendor} {v.asset.nome}" if v.asset else "N/D"
+            match_type = v.match_type.value if v.match_type else "-"
+            triage_status_val = v.triage_status.value if v.triage_status else "nuova"
+            triage_badge = f'<span class="badge-{triage_status_val} px-2 py-0.5 rounded text-xs">{triage_status_val}</span>'
+            source_val = ", ".join(v.cve.sources) if (v.cve and v.cve.sources) else "NVD"
+            pub_date = v.cve.published_date.strftime('%d/%m/%Y') if (v.cve and v.cve.published_date) else "N/D"
+            html_rows += f'''
+            <tr class="table-row border-b border-gray-100">
+                <td class="px-4 py-3 text-sm font-medium text-blue-600"><a href="/cve/{v.cve_id}" class="hover:underline">{cve_id}</a></td>
+                <td class="px-4 py-3 text-sm">{sev_badge}</td>
+                <td class="px-4 py-3 text-sm text-gray-900">{asset_name}</td>
+                <td class="px-4 py-3 text-sm text-xs text-gray-500">{match_type}</td>
+                <td class="px-4 py-3 text-sm">{triage_badge}</td>
+                <td class="px-4 py-3 text-sm text-xs text-gray-500">{source_val}</td>
+                <td class="px-4 py-3 text-sm text-xs text-gray-500">{pub_date}</td>
+                <td class="px-4 py-3 text-sm text-right">
+                    <a href="/cve/{v.cve_id}" class="text-blue-600 hover:text-blue-800 text-xs"><i class="fas fa-eye"></i> Dettaglio</a>
+                </td>
+            </tr>
+            '''
+        return HTMLResponse(html_rows)
+
     items = [AssetVulnerabilityResponse.from_orm(v).dict() for v in vulns]
     
     return PaginatedResponse(
