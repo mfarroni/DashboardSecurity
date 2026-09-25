@@ -44,28 +44,31 @@
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
             <div class="flex flex-wrap gap-4">
                 <select id="filter-tipo" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        hx-get="/api/dashboard/api/perimetro" hx-target="#assets-table" hx-trigger="change">
+                        hx-get="/api/perimetro" hx-target="#assets-table" hx-trigger="change"
+                        hx-include="[id='filter-criticita'],[id='filter-has-vulns'],[id='filter-search']">
                     <option value="">Tutti i tipi</option>
                     <option value="hardware">Hardware</option>
                     <option value="software">Software</option>
                 </select>
                 <select id="filter-criticita" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        hx-get="/api/perimetro" hx-target="#assets-table" hx-trigger="change">
+                        hx-get="/api/perimetro" hx-target="#assets-table" hx-trigger="change"
+                        hx-include="[id='filter-tipo'],[id='filter-has-vulns'],[id='filter-search']">
                     <option value="">Tutte criticità</option>
                     <option value="produzione">Produzione</option>
                     <option value="test">Test</option>
                     <option value="dismesso">Dismesso</option>
                 </select>
                 <select id="filter-has-vulns" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        hx-get="/api/perimetro" hx-target="#assets-table" hx-trigger="change">
+                        hx-get="/api/perimetro" hx-target="#assets-table" hx-trigger="change"
+                        hx-include="[id='filter-tipo'],[id='filter-criticita'],[id='filter-search']">
                     <option value="">Tutti</option>
                     <option value="true">Con vulnerabilità</option>
                     <option value="false">Senza vulnerabilità</option>
                 </select>
                 <input type="text" id="filter-search" placeholder="Cerca (nome, vendor, versione, CPE)..." 
                        class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64"
-                       hx-get="/api/assets" hx-target="#assets-table" hx-trigger="keyup changed delay:300ms"
-                       hx-include="[id='filter-tipo'],[id='filter-criticita']">
+                       hx-get="/api/perimetro" hx-target="#assets-table" hx-trigger="keyup changed delay:300ms"
+                       hx-include="[id='filter-tipo'],[id='filter-criticita'],[id='filter-has-vulns']">
             </div>
         </div>
 

@@ -1,0 +1,48 @@
+<!-- Syslog Top 4 Stats Header Cards Partial -->
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Totale Log (24h)</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ stats.total }}</p>
+        </div>
+        <div class="p-3 bg-blue-50 text-blue-600 rounded-lg">
+            <i class="fas fa-list-alt text-xl"></i>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Alta Severità</p>
+            <p class="text-2xl font-bold text-red-600 mt-1">{{ high_severity }}</p>
+        </div>
+        <div class="p-3 bg-red-50 text-red-600 rounded-lg">
+            <i class="fas fa-exclamation-triangle text-xl"></i>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Menzioni CVE</p>
+            <p class="text-2xl font-bold text-orange-600 mt-1">{{ stats.with_cve_mentions }}</p>
+        </div>
+        <div class="p-3 bg-orange-50 text-orange-600 rounded-lg">
+            <i class="fas fa-bug text-xl"></i>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Host Attivi</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ stats.top_hosts|length }}</p>
+        </div>
+        <div class="p-3 bg-green-50 text-green-600 rounded-lg">
+            <i class="fas fa-server text-xl"></i>
+        </div>
+    </div>
+</div>

@@ -88,6 +88,29 @@ def test_asset_crud():
     assert response.status_code == 204
 
 
+def test_htmx_table_responses():
+    """Verifica allineamento colonne HTMX per syslog, feed, vulnerabilita, perimetro"""
+    r_syslog = client.get("/api/syslog", headers={"HX-Request": "true"})
+    assert r_syslog.status_code == 200
+    assert 'colspan="7"' in r_syslog.text or '</td>' in r_syslog.text
+
+    r_cards = client.get("/api/dashboard/syslog-header-cards")
+    assert r_cards.status_code == 200
+    assert "Totale Log" in r_cards.text
+
+    r_feed = client.get("/api/feed", headers={"HX-Request": "true"})
+    assert r_feed.status_code == 200
+    assert 'colspan="5"' in r_feed.text or '</td>' in r_feed.text
+
+    r_vulns = client.get("/api/vulnerabilita", headers={"HX-Request": "true"})
+    assert r_vulns.status_code == 200
+    assert 'colspan="8"' in r_vulns.text or '</td>' in r_vulns.text
+
+    r_perimetro = client.get("/api/perimetro", headers={"HX-Request": "true"})
+    assert r_perimetro.status_code == 200
+    assert 'colspan="6"' in r_perimetro.text or '</td>' in r_perimetro.text
+
+
 @pytest.mark.skip(reason="Richiede connessione API NVD esterna / rate limit")
 def test_cve_sync_nvd():
     """Sync NVD (richiede API key o rate limit pubblico)"""

@@ -127,13 +127,27 @@ async def get_overview_cards(request: Request, db: Session = Depends(get_db)):
 @router.get("/api/perimetro")
 async def get_perimetro_with_vulns(
     request: Request,
+    tipo: Optional[AssetType] = None,
     criticita: Optional[AssetCriticality] = None,
     has_vulns: Optional[bool] = None,
+    search: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     query = db.query(Asset)
+    if tipo:
+        query = query.filter(Asset.tipo == tipo)
     if criticita:
         query = query.filter(Asset.criticita == criticita)
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                Asset.nome.ilike(search_term),
+                Asset.vendor.ilike(search_term),
+                Asset.versione.ilike(search_term),
+                Asset.cpe.ilike(search_term),
+            )
+        )
     
     assets = query.order_by(Asset.vendor, Asset.nome).all()
     
@@ -310,4 +324,17 @@ async def get_syslog_stats(request: Request, db: Session = Depends(get_db)):
     
     return request.app.state.templates.TemplateResponse("partials/syslog_stats.html", {
         "request": request, "stats": stats
+    })
+
+
+@router.get("/api/dashboard/syslog-header-cards", response_class=HTMLResponse)
+async def get_syslog_header_cards(request: Request, db: Session = Depends(get_db)):
+    """Partial: Syslog top 4 stat cards for syslog.html"""
+    from app.api.syslog import syslog_stats
+    stats = await syslog_stats(hours=24, db=db)
+    high_severity_count = sum(count for sev, count in stats.get("by_severity", {}).items() if sev in ['emerg', 'alert', 'crit', 'err', 'error', 'critical'])
+    return request.app.state.templates.TemplateResponse("partials/syslog_header_cards.html", {
+        "request": request,
+        "stats": stats,
+        "high_severity": high_severity_count
     })

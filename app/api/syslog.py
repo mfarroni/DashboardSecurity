@@ -4,7 +4,7 @@ from sqlalchemy import func, desc, or_, and_
 from typing import List, Optional
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import io
 
@@ -185,6 +185,7 @@ def find_cve_correlations(db: Session, entry: SyslogEntry) -> List[str]:
 
 
 from fastapi.responses import HTMLResponse
+from sqlalchemy.orm import joinedload
 
 @router.get("")
 async def list_syslog(
@@ -201,7 +202,7 @@ async def list_syslog(
     has_cve: Optional[bool] = None,
     db: Session = Depends(get_db),
 ):
-    query = db.query(SyslogEntry)
+    query = db.query(SyslogEntry).options(joinedload(SyslogEntry.asset))
     
     if hostname:
         query = query.filter(SyslogEntry.hostname.ilike(f"%{hostname}%"))
@@ -228,19 +229,23 @@ async def list_syslog(
     
     if request.headers.get("hx-request"):
         if not entries:
-            return HTMLResponse('<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">Nessun log trovato</td></tr>')
+            return HTMLResponse('<tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">Nessun log trovato</td></tr>')
         html_rows = ""
         for entry in entries:
             timestamp_str = entry.timestamp.strftime('%d/%m/%Y %H:%M:%S') if entry.timestamp else "N/D"
-            cve_badge = f'<span class="badge-textual px-2 py-0.5 rounded text-xs">{", ".join(entry.matched_cve_ids)}</span>' if entry.matched_cve_ids else '<span class="text-xs text-gray-400">-</span>'
+            cve_badge = f'<span class="bg-red-100 text-red-800 px-2 py-0.5 rounded text-xs">{", ".join(entry.matched_cve_ids)}</span>' if entry.matched_cve_ids else ''
+            asset_name = f'<span class="font-medium text-gray-800">{entry.asset.vendor} {entry.asset.nome}</span>' if entry.asset else ''
+            asset_cve = f'{asset_name} {cve_badge}'.strip() or '<span class="text-xs text-gray-400">-</span>'
             sev_class = "text-red-600 font-bold" if entry.severity in ["emerg", "alert", "crit", "err", "error", "critical"] else "text-gray-700"
             html_rows += f'''
             <tr class="table-row border-b border-gray-100">
-                <td class="px-4 py-3 text-xs text-gray-500 font-mono">{timestamp_str}</td>
-                <td class="px-4 py-3 text-xs font-semibold uppercase {sev_class}">{entry.severity or 'N/D'}</td>
-                <td class="px-4 py-3 text-xs font-medium text-gray-900">{entry.hostname or 'N/D'}</td>
-                <td class="px-4 py-3 text-xs text-gray-600 font-mono break-all">{entry.message or ''}</td>
-                <td class="px-4 py-3 text-xs text-gray-500">{cve_badge}</td>
+                <td class="px-3 py-2 text-xs text-gray-500 font-mono">{timestamp_str}</td>
+                <td class="px-3 py-2 text-xs font-medium text-gray-900">{entry.hostname or 'N/D'}</td>
+                <td class="px-3 py-2 text-xs font-semibold uppercase {sev_class}">{entry.severity or 'N/D'}</td>
+                <td class="px-3 py-2 text-xs text-gray-500">{entry.facility or 'N/D'}</td>
+                <td class="px-3 py-2 text-xs text-gray-500">{entry.program or 'N/D'}</td>
+                <td class="px-3 py-2 text-xs text-gray-600 font-mono break-all">{entry.message or ''}</td>
+                <td class="px-3 py-2 text-xs">{asset_cve}</td>
             </tr>
             '''
         return HTMLResponse(html_rows)
