@@ -9,7 +9,8 @@ import pandas as pd
 import io
 
 from app.core.database import get_db
-from app.models.models import SyslogEntry, Asset, ImportBatch
+from app.models.models import SyslogEntry, Asset, ImportBatch, UserRole
+from app.api.deps import require_role
 from app.schemas.schemas import SyslogEntryResponse, ImportBatchResponse, PaginatedResponse
 
 router = APIRouter()
@@ -298,7 +299,7 @@ async def syslog_stats(
     }
 
 
-@router.post("/import", response_model=ImportBatchResponse)
+@router.post("/import", response_model=ImportBatchResponse, dependencies=[Depends(require_role([UserRole.ADMIN, UserRole.ANALYST]))])
 async def import_syslog(
     file: UploadFile = File(...),
     batch_id: Optional[str] = Form(None),
@@ -393,7 +394,7 @@ async def syslog_import_history(
     return [ImportBatchResponse.from_orm(b) for b in batches]
 
 
-@router.delete("/clear")
+@router.delete("/clear", dependencies=[Depends(require_role([UserRole.ADMIN]))])
 async def clear_syslog(
     confirm: bool = Query(False),
     db: Session = Depends(get_db),

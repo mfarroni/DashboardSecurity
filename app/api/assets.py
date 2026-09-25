@@ -8,7 +8,8 @@ import uuid
 from datetime import datetime
 
 from app.core.database import get_db
-from app.models.models import Asset, ImportBatch, AssetType, AssetCriticality
+from app.models.models import Asset, ImportBatch, AssetType, AssetCriticality, UserRole
+from app.api.deps import require_role
 from app.schemas.schemas import (
     AssetResponse, AssetCreate, AssetUpdate, AssetImportRow,
     ImportBatchResponse, ImportPreviewResponse, PaginatedResponse
@@ -89,7 +90,7 @@ async def get_asset(asset_id: int, db: Session = Depends(get_db)):
     return asset_dict
 
 
-@router.post("", response_model=AssetResponse, status_code=201)
+@router.post("", response_model=AssetResponse, status_code=201, dependencies=[Depends(require_role([UserRole.ADMIN, UserRole.ANALYST]))])
 async def create_asset(asset: AssetCreate, db: Session = Depends(get_db)):
     # Check CPE uniqueness if provided
     if asset.cpe:
@@ -104,7 +105,7 @@ async def create_asset(asset: AssetCreate, db: Session = Depends(get_db)):
     return AssetResponse.from_orm(db_asset)
 
 
-@router.patch("/{asset_id}", response_model=AssetResponse)
+@router.patch("/{asset_id}", response_model=AssetResponse, dependencies=[Depends(require_role([UserRole.ADMIN, UserRole.ANALYST]))])
 async def update_asset(asset_id: int, asset_update: AssetUpdate, db: Session = Depends(get_db)):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
@@ -130,7 +131,7 @@ async def update_asset(asset_id: int, asset_update: AssetUpdate, db: Session = D
     return AssetResponse.from_orm(asset)
 
 
-@router.delete("/{asset_id}", status_code=204)
+@router.delete("/{asset_id}", status_code=204, dependencies=[Depends(require_role([UserRole.ADMIN]))])
 async def delete_asset(asset_id: int, db: Session = Depends(get_db)):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:

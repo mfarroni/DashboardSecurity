@@ -47,6 +47,29 @@ class FeedSourceType(str, enum.Enum):
     CTI = "cti"
 
 
+class UserRole(str, enum.Enum):
+    ADMIN = "admin"
+    ANALYST = "analyst"
+    READ_ONLY = "read_only"
+
+
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(100), unique=True, nullable=False, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    role = Column(SQLEnum(UserRole), default=UserRole.ANALYST, nullable=False, index=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    last_login = Column(DateTime, nullable=True)
+    
+    __table_args__ = (
+        Index("ix_users_username_role", "username", "role"),
+    )
+
+
 class Asset(Base):
     __tablename__ = "assets"
     

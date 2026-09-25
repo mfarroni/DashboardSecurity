@@ -31,6 +31,39 @@ def get_db():
 
 
 def init_db():
-    """Initialize database tables"""
-    from app.models.models import Base as ModelsBase
+    """Initialize database tables and seed default users if empty"""
+    from app.models.models import Base as ModelsBase, User, UserRole
+    from app.core.security import hash_password
+    
     ModelsBase.metadata.create_all(bind=engine)
+    
+    db = SessionLocal()
+    try:
+        if db.query(User).count() == 0:
+            default_admin = User(
+                username="admin",
+                email="admin@security.local",
+                hashed_password=hash_password("admin123"),
+                role=UserRole.ADMIN,
+                is_active=True
+            )
+            default_analyst = User(
+                username="analyst",
+                email="analyst@security.local",
+                hashed_password=hash_password("analyst123"),
+                role=UserRole.ANALYST,
+                is_active=True
+            )
+            default_readonly = User(
+                username="readonly",
+                email="readonly@security.local",
+                hashed_password=hash_password("readonly123"),
+                role=UserRole.READ_ONLY,
+                is_active=True
+            )
+            db.add_all([default_admin, default_analyst, default_readonly])
+            db.commit()
+    except Exception as e:
+        db.rollback()
+    finally:
+        db.close()

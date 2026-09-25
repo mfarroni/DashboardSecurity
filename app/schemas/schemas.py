@@ -42,6 +42,44 @@ class FeedSourceType(str, Enum):
     CTI = "cti"
 
 
+class UserRole(str, Enum):
+    ADMIN = "admin"
+    ANALYST = "analyst"
+    READ_ONLY = "read_only"
+
+
+# User & Auth schemas
+class UserBase(BaseModel):
+    username: str = Field(..., min_length=3, max_length=100)
+    email: str
+    role: UserRole = UserRole.ANALYST
+    is_active: bool = True
+
+
+class UserCreate(UserBase):
+    password: str = Field(..., min_length=6)
+
+
+class UserResponse(UserBase):
+    id: int
+    created_at: datetime
+    last_login: Optional[datetime] = None
+    
+    class Config:
+        orm_mode = True
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+
 # Asset schemas
 class AssetBase(BaseModel):
     tipo: AssetType

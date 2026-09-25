@@ -10,8 +10,9 @@ from datetime import datetime, timedelta
 
 from app.core.database import get_db
 from app.models.models import (
-    FeedItem, CVE, FeedItemCVE, ImportBatch, FeedSourceType, CVESeverity
+    FeedItem, CVE, FeedItemCVE, ImportBatch, FeedSourceType, CVESeverity, UserRole
 )
+from app.api.deps import require_role
 from app.schemas.schemas import (
     FeedItemResponse, FeedItemCreate, CVEResponse, CVEDetailResponse,
     ImportBatchResponse, ImportPreviewResponse, PaginatedResponse
@@ -124,7 +125,7 @@ async def get_feed_item(item_id: int, db: Session = Depends(get_db)):
     return FeedItemResponse.from_orm(item)
 
 
-@router.post("/import/feedhub", response_model=ImportBatchResponse)
+@router.post("/import/feedhub", response_model=ImportBatchResponse, dependencies=[Depends(require_role([UserRole.ADMIN, UserRole.ANALYST]))])
 async def import_feedhub_file(
     file: UploadFile = File(...),
     batch_id: Optional[str] = Form(None),
@@ -229,7 +230,7 @@ async def import_feedhub_file(
     return ImportBatchResponse.from_orm(batch)
 
 
-@router.post("/import/cti", response_model=ImportBatchResponse)
+@router.post("/import/cti", response_model=ImportBatchResponse, dependencies=[Depends(require_role([UserRole.ADMIN, UserRole.ANALYST]))])
 async def import_cti_file(
     file: UploadFile = File(...),
     source_name: str = Form("CTI"),

@@ -61,30 +61,35 @@ def test_overview_cards_partial():
 
 
 def test_asset_crud():
-    """CRUD Asset base"""
+    """CRUD Asset base con utente autenticato admin"""
+    res_login = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    assert res_login.status_code == 200
+    token = res_login.json()["access_token"]
+    cookies = {"session_token": token}
+
     # Create
     response = client.post("/api/assets", json={
         "tipo": "software",
         "nome": "TestApp",
         "vendor": "TestVendor",
         "versione": "1.0.0"
-    })
+    }, cookies=cookies)
     assert response.status_code == 201
     asset = response.json()
     assert asset["nome"] == "TestApp"
     asset_id = asset["id"]
     
     # Read
-    response = client.get(f"/api/assets/{asset_id}")
+    response = client.get(f"/api/assets/{asset_id}", cookies=cookies)
     assert response.status_code == 200
     
     # Update
-    response = client.patch(f"/api/assets/{asset_id}", json={"versione": "2.0.0"})
+    response = client.patch(f"/api/assets/{asset_id}", json={"versione": "2.0.0"}, cookies=cookies)
     assert response.status_code == 200
     assert response.json()["versione"] == "2.0.0"
     
     # Delete
-    response = client.delete(f"/api/assets/{asset_id}")
+    response = client.delete(f"/api/assets/{asset_id}", cookies=cookies)
     assert response.status_code == 204
 
 

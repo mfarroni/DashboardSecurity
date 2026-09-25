@@ -7,45 +7,51 @@ from datetime import datetime, timedelta
 
 from app.core.database import get_db
 from app.models.models import (
-    Asset, CVE, FeedItem, AssetVulnerability, SyslogEntry, ImportBatch,
+    Asset, CVE, FeedItem, AssetVulnerability, SyslogEntry, ImportBatch, User,
     AssetType, AssetCriticality, CVESeverity, TriagStatus, FeedSourceType
 )
 from app.schemas.schemas import (
     DashboardOverview, AssetWithVulnsResponse, PaginatedResponse,
     SyslogEntryResponse
 )
+from app.api.deps import get_current_user_optional
 
 router = APIRouter()
 
 
+@router.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return request.app.state.templates.TemplateResponse("login.html", {"request": request})
+
+
 @router.get("/", response_class=HTMLResponse)
-async def dashboard_page(request: Request):
-    return request.app.state.templates.TemplateResponse("dashboard.html", {"request": request})
+async def dashboard_page(request: Request, current_user: Optional[User] = Depends(get_current_user_optional)):
+    return request.app.state.templates.TemplateResponse("dashboard.html", {"request": request, "current_user": current_user})
 
 
 @router.get("/perimetro", response_class=HTMLResponse)
-async def perimetro_page(request: Request):
-    return request.app.state.templates.TemplateResponse("perimetro.html", {"request": request})
+async def perimetro_page(request: Request, current_user: Optional[User] = Depends(get_current_user_optional)):
+    return request.app.state.templates.TemplateResponse("perimetro.html", {"request": request, "current_user": current_user})
 
 
 @router.get("/vulnerabilita", response_class=HTMLResponse)
-async def vulnerabilita_page(request: Request):
-    return request.app.state.templates.TemplateResponse("vulnerabilita.html", {"request": request})
+async def vulnerabilita_page(request: Request, current_user: Optional[User] = Depends(get_current_user_optional)):
+    return request.app.state.templates.TemplateResponse("vulnerabilita.html", {"request": request, "current_user": current_user})
 
 
 @router.get("/feed", response_class=HTMLResponse)
-async def feed_page(request: Request):
-    return request.app.state.templates.TemplateResponse("feed.html", {"request": request})
+async def feed_page(request: Request, current_user: Optional[User] = Depends(get_current_user_optional)):
+    return request.app.state.templates.TemplateResponse("feed.html", {"request": request, "current_user": current_user})
 
 
 @router.get("/syslog", response_class=HTMLResponse)
-async def syslog_page(request: Request):
-    return request.app.state.templates.TemplateResponse("syslog.html", {"request": request})
+async def syslog_page(request: Request, current_user: Optional[User] = Depends(get_current_user_optional)):
+    return request.app.state.templates.TemplateResponse("syslog.html", {"request": request, "current_user": current_user})
 
 
 @router.get("/cve/{cve_id}", response_class=HTMLResponse)
-async def cve_detail_page(cve_id: int, request: Request):
-    return request.app.state.templates.TemplateResponse("cve_detail.html", {"request": request, "cve_id": cve_id})
+async def cve_detail_page(cve_id: int, request: Request, current_user: Optional[User] = Depends(get_current_user_optional)):
+    return request.app.state.templates.TemplateResponse("cve_detail.html", {"request": request, "cve_id": cve_id, "current_user": current_user})
 
 
 @router.get("/api/overview", response_model=DashboardOverview)

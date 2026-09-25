@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     # Application
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     secret_key: str = Field(default="dev-secret-change-in-production", alias="SECRET_KEY")
+    environment: str = Field(default="development", alias="ENVIRONMENT")
+    allowed_origins: str = Field(default="http://localhost:8000,http://127.0.0.1:8000", alias="ALLOWED_ORIGINS")
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 480
     timezone: str = Field(default="Europe/Rome", alias="TZ")
     
     # Paths - use local paths for dev, /app for Docker
@@ -52,6 +56,10 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Validation for production environment
+if settings.environment.lower() in ["production", "prod"] and (not settings.secret_key or settings.secret_key == "dev-secret-change-in-production"):
+    raise RuntimeError("SECRET_KEY obbligatoria non definita nell'ambiente per la produzione!")
 
 # Ensure directories exist
 for dir_path in [
