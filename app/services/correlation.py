@@ -110,6 +110,26 @@ def textual_match_score(asset: Asset, cve: CVE) -> float:
     return max(scores) if scores else 0.0
 
 
+def search_fts_cves(db: Session, asset: Asset) -> List[int]:
+    """Fast candidate lookup via FTS5 index for SQLite"""
+    terms = [asset.vendor, asset.nome]
+    query_terms = [re.sub(r"[^\w]", "", t) for t in terms if t]
+    if not query_terms:
+        return []
+    
+    query_str = " OR ".join(query_terms)
+    try:
+        from sqlalchemy import text
+        res = db.execute(text("SELECT cve_id FROM cves_fts WHERE cves_fts MATCH :q"), {"q": query_str}).fetchall()
+        cve_ids = [row[0] for row in res]
+        if cve_ids:
+            matching_cves = db.query(CVE.id).filter(CVE.cve_id.in_(cve_ids)).all()
+            return [c[0] for c in matching_cves]
+    except Exception:
+        pass
+    return []
+
+
 async def correlate_all(db: Session) -> dict:
     """
     Correlazione completa: per ogni asset, trova CVE rilevanti.

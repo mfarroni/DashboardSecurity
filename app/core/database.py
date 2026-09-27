@@ -31,12 +31,22 @@ def get_db():
 
 
 def init_db():
-    """Initialize database tables and seed default users if empty"""
+    """Initialize database tables, FTS virtual tables and seed default users if empty"""
     from app.models.models import Base as ModelsBase, User, UserRole
     from app.core.security import hash_password
+    from sqlalchemy import text
     
     ModelsBase.metadata.create_all(bind=engine)
     
+    # Initialize FTS5 virtual table for SQLite
+    if "sqlite" in settings.database_url:
+        with engine.connect() as conn:
+            try:
+                conn.execute(text("CREATE VIRTUAL TABLE IF NOT EXISTS cves_fts USING fts5(cve_id, description, cpe_matches);"))
+                conn.commit()
+            except Exception as e:
+                print(f"FTS5 init note: {e}")
+
     db = SessionLocal()
     try:
         if db.query(User).count() == 0:

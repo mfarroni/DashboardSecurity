@@ -10,8 +10,9 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.models import (
     CVE, Asset, AssetVulnerability, FeedItem, FeedItemCVE,
-    ImportBatch, CVESeverity, TriagStatus, MatchType
+    ImportBatch, CVESeverity, TriagStatus, MatchType, UserRole
 )
+from app.api.deps import require_role
 from app.schemas.schemas import (
     CVEResponse, CVEDetailResponse, AssetVulnerabilityResponse,
     AssetVulnerabilityUpdate, PaginatedResponse, DashboardOverview
@@ -264,73 +265,19 @@ async def get_cve_by_id_string(cve_id_str: str, db: Session = Depends(get_db)):
     return await get_cve_detail(cve.id, db)
 
 
-@router.post("/sync/nvd")
+@router.post("/sync/nvd", dependencies=[Depends(require_role([UserRole.ADMIN]))])
 async def sync_nvd(
     days: int = Query(7, ge=1, le=30),
     db: Session = Depends(get_db),
 ):
-    """Sync recent CVEs from NVD API"""
-    imported = 0
-    updated = 0
-    errors = []
-    
-    # Fetch in batches
-    start_index = 0
-    batch_size = 100
-    
-    while True:
-        data = await nvd_client.fetch_recent(days=days, start_index=start_index, results_per_page=batch_size)
-        vulns = data.get("vulnerabilities", [])
-        total_results = data.get("totalResults", 0)
-        
-        if not vulns:
-            break
-        
-        for vuln_wrapper in vulns:
-            try:
-                nvd_cve = vuln_wrapper.get("cve", {})
-                parsed = parse_nvd_cve(nvd_cve)
-                cve_id_str = parsed["cve_id"]
-                
-                existing = db.query(CVE).filter(CVE.cve_id == cve_id_str).first()
-                
-                if existing:
-                    # Update
-                    for key, value in parsed.items():
-                        if key != "cve_id":
-                            # Merge sources
-                            if key == "sources" and existing.sources:
-                                sources = set(existing.sources)
-                                sources.update(value)
-                                setattr(existing, key, list(sources))
-                            else:
-                                setattr(existing, key, value)
-                    existing.updated_at = datetime.utcnow()
-                    updated += 1
-                else:
-                    # Create new
-                    new_cve = CVE(**parsed)
-                    db.add(new_cve)
-                    imported += 1
-                    
-            except Exception as e:
-                errors.append(f"{nvd_cve.get('id', 'unknown')}: {str(e)}")
-        
-        db.commit()
-        start_index += batch_size
-        if start_index >= total_results:
-            break
-    
-    return {
-        "imported": imported,
-        "updated": updated,
-        "errors": errors,
-    }
+    """Sync recent CVEs from NVD API via background sync worker"""
+    from app.services.sync_worker import sync_worker
+    return await sync_worker.run_nvd_sync(days=days)
 
 
-@router.post("/correlate")
+@router.post("/correlate", dependencies=[Depends(require_role([UserRole.ADMIN, UserRole.ANALYST]))])
 async def correlate_cves(db: Session = Depends(get_db)):
-    """Esegue correlazione CVE ↔ Asset (CPE match + fallback testuale)"""
+    """Esegue correlazione CVE ↔ Asset (CPE match + fallback testuale FTS5)"""
     from app.services.correlation import correlate_all
     return await correlate_all(db)
 
