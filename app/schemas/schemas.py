@@ -328,3 +328,27 @@ class PaginatedResponse(BaseModel):
     page: int
     page_size: int
     total_pages: int
+
+
+class SourceRegistryCreate(BaseModel):
+    code: str = Field(..., min_length=2, max_length=50)
+    name: str = Field(..., min_length=2, max_length=100)
+    category: str
+    base_url: Optional[str] = None
+    description: Optional[str] = None
+
+
+class SourceRegistryResponse(BaseModel):
+    id: int
+    code: str
+    name: str
+    category: str
+    base_url: Optional[str] = None
+    is_active: bool
+    is_builtin: bool
+    description: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+        from_attributes = True

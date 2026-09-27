@@ -49,6 +49,7 @@ def init_db():
 
     db = SessionLocal()
     try:
+        from app.models.models import SourceRegistry, SourceCategory
         if db.query(User).count() == 0:
             default_admin = User(
                 username="admin",
@@ -64,6 +65,13 @@ def init_db():
                 role=UserRole.ANALYST,
                 is_active=True
             )
+            default_operator = User(
+                username="operator",
+                email="operator@security.local",
+                hashed_password=hash_password("operator123"),
+                role=UserRole.OPERATOR,
+                is_active=True
+            )
             default_readonly = User(
                 username="readonly",
                 email="readonly@security.local",
@@ -71,7 +79,19 @@ def init_db():
                 role=UserRole.READ_ONLY,
                 is_active=True
             )
-            db.add_all([default_admin, default_analyst, default_readonly])
+            db.add_all([default_admin, default_analyst, default_operator, default_readonly])
+            db.commit()
+
+        if db.query(SourceRegistry).count() == 0:
+            default_sources = [
+                SourceRegistry(code="nvd", name="NIST National Vulnerability Database", category=SourceCategory.CVE, base_url="https://services.nvd.nist.gov/rest/json/cves/2.0", is_builtin=True, description="Database ufficiale CVE NIST"),
+                SourceRegistry(code="cve_org", name="CVE.org Official Services", category=SourceCategory.CVE, base_url="https://cveawg.mitre.org/api/cve", is_builtin=True, description="Repository ufficiale CVE Services API v5"),
+                SourceRegistry(code="cisa_kev", name="CISA Known Exploited Vulnerabilities", category=SourceCategory.CVE, base_url="https://www.cisa.gov/known-exploited-vulnerabilities-catalog", is_builtin=True, description="Catalogo CISA vulnerabilità note sfruttate"),
+                SourceRegistry(code="github_advisories", name="GitHub Security Advisory DB", category=SourceCategory.CVE, base_url="https://github.com/advisories", is_builtin=True, description="Advisory di sicurezza open source GitHub"),
+                SourceRegistry(code="feedhub", name="FeedHub Security Feed", category=SourceCategory.FEED, base_url="https://feedhub.security.local", is_builtin=True, description="Feed RSS/JSON aggregati di sicurezza"),
+                SourceRegistry(code="misp_ioc", name="MISP Threat Intelligence IoC Exchange", category=SourceCategory.IOC, base_url="https://misp.security.local", is_builtin=True, description="Indicatori di compromissione (IoC IP, Domain, Hash)"),
+            ]
+            db.add_all(default_sources)
             db.commit()
     except Exception as e:
         db.rollback()

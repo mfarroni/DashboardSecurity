@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block title %}Amministrazione Utenti & Fonti - Security Dashboard{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50">
+    <!-- Navigation Bar -->
+    <nav class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-blue-600 text-white p-2 rounded-lg font-bold text-lg shadow-sm">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <a href="/" class="text-xl font-bold tracking-tight text-white hover:text-blue-300 transition">Security Dashboard</a>
+                    <span class="text-slate-500">/</span>
+                    <span class="text-blue-400 font-medium">Gestione Admin</span>
+                </div>
+                <div class="flex items-center space-x-5">
+                    <a href="/perimetro" class="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">Perimetro</a>
+                    <a href="/vulnerabilita" class="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">Vulnerabilità</a>
+                    <a href="/feed" class="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">Feed CTI</a>
+                    <a href="/syslog" class="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">Syslog</a>
+                    
+                    {% if current_user %}
+                    <div class="flex items-center space-x-3 border-l border-slate-700 pl-4">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-900/80 text-purple-200 border border-purple-600">
+                            <i class="fas fa-user-shield mr-1.5"></i>{{ current_user.username }} ({{ current_user.role.value }})
+                        </span>
+                        <a href="/api/auth/logout" class="bg-red-600/80 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-md font-medium transition shadow-sm">
+                            <i class="fas fa-sign-out-alt mr-1"></i>Esci
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Body -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+            <div>
+                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Pannello Amministrazione</h1>
+                <p class="text-slate-600 mt-1">Gestisci i collaboratori, le autorizzazioni e la Rubrica delle Fonti dinamica (CVE / Feed / IoC)</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('new-user-modal').classList.remove('hidden')" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2.5 rounded-lg shadow-sm text-sm transition">
+                    <i class="fas fa-user-plus mr-2"></i>Nuovo Collaboratore
+                </button>
+                <button onclick="document.getElementById('new-source-modal').classList.remove('hidden')" 
+                        class="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2.5 rounded-lg shadow-sm text-sm transition">
+                    <i class="fas fa-database mr-2"></i>Aggiungi Fonte Rubrica
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Collaborators Table (2 cols) -->
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-slate-900 flex items-center">
+                        <i class="fas fa-users text-blue-600 mr-2.5"></i>Utenti e Collaboratori Registrati
+                    </h2>
+                    <span class="text-xs text-slate-500 font-medium bg-slate-100 px-3 py-1 rounded-full">Totale: {{ users|length }}</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-700 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
+                                <th class="p-3">ID</th>
+                                <th class="p-3">Utente</th>
+                                <th class="p-3">Email</th>
+                                <th class="p-3">Ruolo</th>
+                                <th class="p-3">Stato</th>
+                                <th class="p-3 text-right">Azione</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 text-sm">
+                            {% for u in users %}
+                            <tr class="hover:bg-slate-50 transition">
+                                <td class="p-3 text-slate-500 font-mono text-xs">#{{ u.id }}</td>
+                                <td class="p-3 font-semibold text-slate-900 flex items-center">
+                                    <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-700 mr-2 text-xs">
+                                        {{ u.username[0]|upper }}
+                                    </div>
+                                    {{ u.username }}
+                                </td>
+                                <td class="p-3 text-slate-600">{{ u.email }}</td>
+                                <td class="p-3">
+                                    {% if u.role.value == 'admin' %}
+                                        <span class="bg-purple-100 text-purple-800 text-xs px-2.5 py-1 rounded-full font-bold border border-purple-200">
+                                            <i class="fas fa-user-shield mr-1"></i>Admin
+                                        </span>
+                                    {% elif u.role.value == 'operator' %}
+                                        <span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold border border-emerald-200">
+                                            <i class="fas fa-eye mr-1"></i>Operatore
+                                        </span>
+                                    {% else %}
+                                        <span class="bg-blue-100 text-blue-800 text-xs px-2.5 py-1 rounded-full font-bold border border-blue-200">
+                                            {{ u.role.value|capitalize }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="p-3">
+                                    {% if u.is_active %}
+                                        <span class="inline-flex items-center text-emerald-700 font-medium text-xs bg-emerald-50 px-2 py-0.5 rounded">
+                                            <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>Attivo
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center text-red-700 font-medium text-xs bg-red-50 px-2 py-0.5 rounded">
+                                            <span class="w-2 h-2 rounded-full bg-red-500 mr-1.5"></span>Disabilitato
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="p-3 text-right">
+                                    {% if u.username != 'admin' %}
+                                    <button hx-patch="/api/auth/users/{{ u.id }}/toggle-active"
+                                            hx-swap="none"
+                                            onclick="setTimeout(() => location.reload(), 300)"
+                                            class="text-xs px-3 py-1.5 rounded font-semibold border transition {% if u.is_active %}border-red-300 text-red-700 hover:bg-red-50{% else %}border-emerald-300 text-emerald-700 hover:bg-emerald-50{% endif %}">
+                                        {% if u.is_active %}Disabilita{% else %}Abilita{% endif %}
+                                    </button>
+                                    {% else %}
+                                    <span class="text-xs text-slate-400 italic">Principale</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Dynamic Source Registry (1 col) -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-slate-900 flex items-center">
+                        <i class="fas fa-layer-group text-purple-600 mr-2.5"></i>Rubrica Fonti (CVE / Feed / IoC)
+                    </h2>
+                </div>
+
+                <div class="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                    {% for s in sources %}
+                    <div class="p-3.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition flex flex-col justify-between">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="font-bold text-slate-900 text-sm flex items-center">
+                                <i class="fas fa-link text-xs text-purple-600 mr-1.5"></i>{{ s.name }}
+                            </span>
+                            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border 
+                                {% if s.category.value == 'cve' %}bg-blue-100 text-blue-800 border-blue-200
+                                {% elif s.category.value == 'feed' %}bg-emerald-100 text-emerald-800 border-emerald-200
+                                {% else %}bg-purple-100 text-purple-800 border-purple-200{% endif %}">
+                                {{ s.category.value }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-600 mb-2">{{ s.description or 'Nessuna descrizione' }}</p>
+                        <div class="flex justify-between items-center text-[11px] text-slate-500 font-mono border-t border-slate-200 pt-2">
+                            <span>Codice: <strong>{{ s.code }}</strong></span>
+                            {% if s.is_builtin %}
+                            <span class="text-slate-500 font-sans italic"><i class="fas fa-check-circle text-blue-500 mr-1"></i>Predefinita</span>
+                            {% else %}
+                            <span class="text-purple-600 font-sans font-semibold">Personalizzata</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Modal Create New User -->
+<div id="new-user-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 modal-content border border-slate-200">
+        <div class="flex justify-between items-center mb-5 border-b pb-3">
+            <h3 class="text-lg font-bold text-slate-900 flex items-center">
+                <i class="fas fa-user-plus text-blue-600 mr-2"></i>Nuovo Collaboratore
+            </h3>
+            <button onclick="document.getElementById('new-user-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+
+        <form id="create-user-form" class="space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Username</label>
+                <input type="text" id="nu-username" required minlength="3" placeholder="es. m.rossi" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Email</label>
+                <input type="email" id="nu-email" required placeholder="m.rossi@security.local" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Password</label>
+                <input type="password" id="nu-password" required minlength="6" placeholder="******" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Ruolo</label>
+                <select id="nu-role" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+                    <option value="operator">Operatore (Sola Lettura / Visibilità Completa)</option>
+                    <option value="analyst">Analista</option>
+                    <option value="admin">Amministratore (Controllo Totale)</option>
+                </select>
+            </div>
+            <div id="create-user-error" class="hidden text-xs text-red-600 font-semibold"></div>
+            <div class="flex justify-end space-x-3 pt-3 border-t">
+                <button type="button" onclick="document.getElementById('new-user-modal').classList.add('hidden')" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50">Annulla</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold">Crea Utente</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Create New Source -->
+<div id="new-source-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 modal-content border border-slate-200">
+        <div class="flex justify-between items-center mb-5 border-b pb-3">
+            <h3 class="text-lg font-bold text-slate-900 flex items-center">
+                <i class="fas fa-database text-purple-600 mr-2"></i>Aggiungi Fonte Rubrica
+            </h3>
+            <button onclick="document.getElementById('new-source-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+
+        <form id="create-source-form" class="space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Codice Identificativo Fonte</label>
+                <input type="text" id="ns-code" required placeholder="es. cve_org_v5" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Nome Completo Fonte</label>
+                <input type="text" id="ns-name" required placeholder="es. CVE.org Official Services API" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Categoria Fonte</label>
+                <select id="ns-category" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500">
+                    <option value="cve">CVE / Vulnerabilità</option>
+                    <option value="feed">Feed CTI / RSS</option>
+                    <option value="ioc">IoC (IP, Domain, Hash)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">URL API o Feed</label>
+                <input type="url" id="ns-url" placeholder="https://api.example.com/v1" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Descrizione</label>
+                <textarea id="ns-desc" rows="2" placeholder="Descrizione della fonte di threat intelligence" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"></textarea>
+            </div>
+            <div id="create-source-error" class="hidden text-xs text-red-600 font-semibold"></div>
+            <div class="flex justify-end space-x-3 pt-3 border-t">
+                <button type="button" onclick="document.getElementById('new-source-modal').classList.add('hidden')" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50">Annulla</button>
+                <button type="submit" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold">Salva Fonte</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('create-user-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const errDiv = document.getElementById('create-user-error');
+        errDiv.classList.add('hidden');
+        try {
+            const res = await fetch('/api/auth/users', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    username: document.getElementById('nu-username').value,
+                    email: document.getElementById('nu-email').value,
+                    password: document.getElementById('nu-password').value,
+                    role: document.getElementById('nu-role').value
+                })
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                errDiv.innerText = data.detail || 'Errore durante la creazione utente';
+                errDiv.classList.remove('hidden');
+            } else {
+                location.reload();
+            }
+        } catch (err) {
+            errDiv.innerText = 'Errore di connessione al server';
+            errDiv.classList.remove('hidden');
+        }
+    });
+
+    document.getElementById('create-source-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const errDiv = document.getElementById('create-source-error');
+        errDiv.classList.add('hidden');
+        try {
+            const res = await fetch('/api/auth/sources', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    code: document.getElementById('ns-code').value,
+                    name: document.getElementById('ns-name').value,
+                    category: document.getElementById('ns-category').value,
+                    base_url: document.getElementById('ns-url').value,
+                    description: document.getElementById('ns-desc').value
+                })
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                errDiv.innerText = data.detail || 'Errore durante il salvataggio della fonte';
+                errDiv.classList.remove('hidden');
+            } else {
+                location.reload();
+            }
+        } catch (err) {
+            errDiv.innerText = 'Errore di connessione al server';
+            errDiv.classList.remove('hidden');
+        }
+    });
+</script>
+{% endblock %}

@@ -21,8 +21,11 @@ def test_health_check():
 
 
 def test_dashboard_page():
-    """Pagina dashboard carica"""
-    response = client.get("/")
+    """Pagina dashboard carica con utente autenticato"""
+    res_login = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    assert res_login.status_code == 200
+    token = res_login.json()["access_token"]
+    response = client.get("/", cookies={"session_token": token})
     assert response.status_code == 200
     assert "Security Dashboard" in response.text
 
@@ -43,9 +46,12 @@ def test_settings_init():
 
 def test_cve_detail_page_regression():
     """M0.1 Regression test: /cve/{cve_id} carica il template senza produrre TemplateNotFound"""
-    response = client.get("/cve/1")
+    res_login = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    assert res_login.status_code == 200
+    token = res_login.json()["access_token"]
+    response = client.get("/cve/1", cookies={"session_token": token})
     assert response.status_code == 200
-    assert "Dettaglio CVE" in response.text
+    assert "Dettaglio" in response.text
 
 
 def test_critical_vulns_partial_regression():

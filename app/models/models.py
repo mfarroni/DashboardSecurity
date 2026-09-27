@@ -50,7 +50,28 @@ class FeedSourceType(str, enum.Enum):
 class UserRole(str, enum.Enum):
     ADMIN = "admin"
     ANALYST = "analyst"
+    OPERATOR = "operator"
     READ_ONLY = "read_only"
+
+
+class SourceCategory(str, enum.Enum):
+    CVE = "cve"
+    FEED = "feed"
+    IOC = "ioc"
+
+
+class SourceRegistry(Base):
+    __tablename__ = "source_registry"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(50), unique=True, nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    category = Column(SQLEnum(SourceCategory), nullable=False, index=True)
+    base_url = Column(String(500), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    is_builtin = Column(Boolean, default=False, nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class User(Base):

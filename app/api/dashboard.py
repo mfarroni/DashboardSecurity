@@ -19,38 +19,73 @@ from app.api.deps import get_current_user_optional
 router = APIRouter()
 
 
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import status
+
+
 @router.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
+async def login_page(request: Request, current_user: Optional[User] = Depends(get_current_user_optional)):
+    if current_user:
+        return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
     return request.app.state.templates.TemplateResponse("login.html", {"request": request})
 
 
 @router.get("/", response_class=HTMLResponse)
 async def dashboard_page(request: Request, current_user: Optional[User] = Depends(get_current_user_optional)):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     return request.app.state.templates.TemplateResponse("dashboard.html", {"request": request, "current_user": current_user})
 
 
 @router.get("/perimetro", response_class=HTMLResponse)
 async def perimetro_page(request: Request, current_user: Optional[User] = Depends(get_current_user_optional)):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     return request.app.state.templates.TemplateResponse("perimetro.html", {"request": request, "current_user": current_user})
 
 
 @router.get("/vulnerabilita", response_class=HTMLResponse)
 async def vulnerabilita_page(request: Request, current_user: Optional[User] = Depends(get_current_user_optional)):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     return request.app.state.templates.TemplateResponse("vulnerabilita.html", {"request": request, "current_user": current_user})
 
 
 @router.get("/feed", response_class=HTMLResponse)
 async def feed_page(request: Request, current_user: Optional[User] = Depends(get_current_user_optional)):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     return request.app.state.templates.TemplateResponse("feed.html", {"request": request, "current_user": current_user})
 
 
 @router.get("/syslog", response_class=HTMLResponse)
 async def syslog_page(request: Request, current_user: Optional[User] = Depends(get_current_user_optional)):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     return request.app.state.templates.TemplateResponse("syslog.html", {"request": request, "current_user": current_user})
+
+
+@router.get("/admin/users", response_class=HTMLResponse)
+async def users_admin_page(request: Request, current_user: Optional[User] = Depends(get_current_user_optional), db: Session = Depends(get_db)):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Accesso riservato agli amministratori")
+    from app.models.models import SourceRegistry
+    users = db.query(User).order_by(User.id.asc()).all()
+    sources = db.query(SourceRegistry).order_by(SourceRegistry.name.asc()).all()
+    return request.app.state.templates.TemplateResponse("users.html", {
+        "request": request,
+        "current_user": current_user,
+        "users": users,
+        "sources": sources
+    })
 
 
 @router.get("/cve/{cve_id}", response_class=HTMLResponse)
 async def cve_detail_page(cve_id: int, request: Request, current_user: Optional[User] = Depends(get_current_user_optional)):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     return request.app.state.templates.TemplateResponse("cve_detail.html", {"request": request, "cve_id": cve_id, "current_user": current_user})
 
 

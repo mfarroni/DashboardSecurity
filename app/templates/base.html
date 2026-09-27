@@ -14,34 +14,29 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Custom styles -->
     <style>
-        .badge-critical { @apply bg-red-600 text-white; }
-        .badge-high { @apply bg-orange-500 text-white; }
-        .badge-medium { @apply bg-yellow-500 text-white; }
-        .badge-low { @apply bg-blue-500 text-white; }
-        .badge-none { @apply bg-gray-400 text-white; }
-        .badge-new { @apply bg-blue-600 text-white; }
-        .badge-in_valutazione { @apply bg-yellow-500 text-white; }
-        .badge-mitigata { @apply bg-green-600 text-white; }
-        .badge-accettata { @apply bg-gray-500 text-white; }
-        .badge-cpe_exact { @apply bg-green-600 text-white; }
-        .badge-cpe_partial { @apply bg-yellow-500 text-white; }
-        .badge-textual { @apply bg-purple-500 text-white; }
+        .badge-critical { @apply bg-gradient-to-r from-red-600 to-rose-700 text-white font-bold shadow-sm; }
+        .badge-high { @apply bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold shadow-sm; }
+        .badge-medium { @apply bg-gradient-to-r from-yellow-400 to-amber-500 text-slate-900 font-bold shadow-sm; }
+        .badge-low { @apply bg-gradient-to-r from-sky-500 to-blue-600 text-white font-bold shadow-sm; }
+        .badge-none { @apply bg-slate-400 text-white font-medium; }
+        .badge-ioc { @apply bg-gradient-to-r from-purple-600 to-indigo-700 text-white font-bold shadow-sm; }
+        .badge-cisa { @apply bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-bold shadow-sm; }
         
-        .cve-card { transition: all 0.2s ease; }
-        .cve-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .cve-card { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+        .cve-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
         
-        .table-row:hover { background-color: #f9fafb; }
+        .table-row:hover { background-color: #f8fafc; }
         
         /* Scrollbar styling */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
         /* Modal */
         .modal-overlay { 
-            background: rgba(0,0,0,0.5); 
-            backdrop-filter: blur(2px);
+            background: rgba(15, 23, 42, 0.65); 
+            backdrop-filter: blur(4px);
         }
         .modal-content { 
             max-height: 90vh; 
@@ -50,16 +45,36 @@
     </style>
     {% block head %}{% endblock %}
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-slate-50 text-slate-800 min-h-screen antialiased">
     {% block content %}{% endblock %}
     
     {% block scripts %}{% endblock %}
     <script>
         document.body.addEventListener('htmx:responseError', function(evt) {
             if (evt.detail.xhr.status === 401) {
-                window.location.href = '/login';
+                window.location.href = '/login?expired=1';
             }
         });
+
+        // 5-minute inactivity timer (300,000 ms)
+        (function() {
+            if (window.location.pathname === '/login') return;
+            let inactivityTimeout;
+            const INACTIVITY_LIMIT = 300000; // 5 minuti in ms
+
+            function resetInactivityTimer() {
+                clearTimeout(inactivityTimeout);
+                inactivityTimeout = setTimeout(function() {
+                    window.location.href = '/api/auth/logout?timeout=1';
+                }, INACTIVITY_LIMIT);
+            }
+
+            ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(function(evt) {
+                window.addEventListener(evt, resetInactivityTimer, true);
+            });
+
+            resetInactivityTimer();
+        })();
     </script>
 </body>
 </html>
