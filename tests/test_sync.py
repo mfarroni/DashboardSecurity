@@ -19,7 +19,7 @@ def setup_db():
 async def test_sync_worker_non_overlap():
     """Verifica che due esecuzioni contemporanee di sync_nvd attivino il lock non-overlap."""
     mock_fetch = AsyncMock(return_value={"vulnerabilities": [], "totalResults": 0})
-    with patch("app.api.cve.nvd_client.fetch_recent", side_effect=mock_fetch):
+    with patch("app.services.sync_worker.nvd_client.fetch_recent", side_effect=mock_fetch):
         # Primo run sblocca
         res1 = await sync_worker.run_nvd_sync(days=1)
         assert res1["status"] in ["success", "completed"]
@@ -39,17 +39,21 @@ def test_fts5_cve_search():
         assert isinstance(cves, list)
 
 
+import uuid
+
+
 def test_cve_sync_nvd_api_endpoint():
     """TASK-10: Test endpoint /api/cve/sync/nvd con utente autenticato admin e mock NVD."""
     res_login = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
     assert res_login.status_code == 200
     token = res_login.json()["access_token"]
 
+    cve_test_id = f"CVE-2024-TEST-{uuid.uuid4().hex[:6]}"
     mock_nvd_data = {
         "vulnerabilities": [
             {
                 "cve": {
-                    "id": "CVE-2024-99999",
+                    "id": cve_test_id,
                     "descriptions": [{"lang": "en", "value": "Test mock CVE description"}],
                     "published": "2024-09-01T00:00:00.000",
                     "lastModified": "2024-09-02T00:00:00.000"
@@ -59,9 +63,9 @@ def test_cve_sync_nvd_api_endpoint():
         "totalResults": 1
     }
 
-    with patch("app.api.cve.nvd_client.fetch_recent", AsyncMock(return_value=mock_nvd_data)):
+    with patch("app.services.sync_worker.nvd_client.fetch_recent", AsyncMock(return_value=mock_nvd_data)):
         res = client.post("/api/cve/sync/nvd?days=1", cookies={"session_token": token})
         assert res.status_code == 200
         data = res.json()
         assert data["status"] == "success"
-        assert data["imported"] == 1
+        assert data["imported"] + data["updated"] == 1

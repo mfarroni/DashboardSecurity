@@ -67,6 +67,7 @@ class UserResponse(UserBase):
     
     class Config:
         orm_mode = True
+        from_attributes = True
 
 
 class LoginRequest(BaseModel):
@@ -115,6 +116,7 @@ class AssetResponse(AssetBase):
     
     class Config:
         orm_mode = True
+        from_attributes = True
 
 
 class AssetImportRow(BaseModel):
@@ -154,6 +156,7 @@ class FeedItemResponse(FeedItemBase):
     
     class Config:
         orm_mode = True
+        from_attributes = True
 
 
 # CVE schemas
@@ -201,6 +204,7 @@ class CVEResponse(CVEBase):
     
     class Config:
         orm_mode = True
+        from_attributes = True
 
 
 class CVEDetailResponse(CVEResponse):
@@ -235,6 +239,7 @@ class AssetVulnerabilityResponse(AssetVulnerabilityBase):
     
     class Config:
         orm_mode = True
+        from_attributes = True
 
 
 # Import schemas
@@ -253,6 +258,7 @@ class ImportBatchResponse(BaseModel):
     
     class Config:
         orm_mode = True
+        from_attributes = True
 
 
 class ImportPreviewResponse(BaseModel):
@@ -288,6 +294,7 @@ class SyslogEntryResponse(SyslogEntryBase):
     
     class Config:
         orm_mode = True
+        from_attributes = True
 
 
 # Dashboard schemas

@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 from app.main import app
 from app.core.database import init_db
@@ -116,12 +117,17 @@ def test_htmx_table_responses():
     assert 'colspan="6"' in r_perimetro.text or '</td>' in r_perimetro.text
 
 
-@pytest.mark.skip(reason="Richiede connessione API NVD esterna / rate limit")
 def test_cve_sync_nvd():
-    """Sync NVD (richiede API key o rate limit pubblico)"""
-    response = client.post("/api/cve/sync/nvd?days=1")
-    assert response.status_code == 200
-    data = response.json()
-    assert "imported" in data
-    assert "updated" in data
-    assert "errors" in data
+    """Sync NVD offline con mock e utente autenticato admin"""
+    res_login = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    assert res_login.status_code == 200
+    token = res_login.json()["access_token"]
+
+    mock_nvd_data = {"vulnerabilities": [], "totalResults": 0}
+    with patch("app.services.sync_worker.nvd_client.fetch_recent", AsyncMock(return_value=mock_nvd_data)):
+        response = client.post("/api/cve/sync/nvd?days=1", cookies={"session_token": token})
+        assert response.status_code == 200
+        data = response.json()
+        assert "imported" in data
+        assert "updated" in data
+        assert "errors" in data

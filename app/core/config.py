@@ -13,22 +13,22 @@ class Settings(BaseSettings):
     # Database
     database_url: str = Field(
         default="sqlite:///data/security.db" if not IN_DOCKER else "sqlite:///data/security.db", 
-        alias="DATABASE_URL"
+        env="DATABASE_URL"
     )
     
     # NVD API
-    nvd_api_key: Optional[str] = Field(default=None, alias="NVD_API_KEY")
+    nvd_api_key: Optional[str] = Field(default=None, env="NVD_API_KEY")
     nvd_api_base_url: str = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-    nvd_rate_limit_per_30s: int = Field(default=5, alias="NVD_RATE_LIMIT")  # 5 without key, 50 with key
+    nvd_rate_limit_per_30s: int = Field(default=5, env="NVD_RATE_LIMIT")  # 5 without key, 50 with key
     
     # Application
-    log_level: str = Field(default="INFO", alias="LOG_LEVEL")
-    secret_key: str = Field(default="dev-secret-change-in-production", alias="SECRET_KEY")
-    environment: str = Field(default="development", alias="ENVIRONMENT")
-    allowed_origins: str = Field(default="http://localhost:8000,http://127.0.0.1:8000", alias="ALLOWED_ORIGINS")
+    log_level: str = Field(default="INFO", env="LOG_LEVEL")
+    secret_key: str = Field(default="dev-secret-change-in-production", env="SECRET_KEY")
+    environment: str = Field(default="development", env="ENVIRONMENT")
+    allowed_origins: str = Field(default="http://localhost:8000,http://127.0.0.1:8000", env="ALLOWED_ORIGINS")
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 480
-    timezone: str = Field(default="Europe/Rome", alias="TZ")
+    timezone: str = Field(default="Europe/Rome", env="TZ")
     
     # Paths - use local paths for dev, /app for Docker
     data_dir: str = str(BASE_DIR / "data") if not IN_DOCKER else "/app/data"
