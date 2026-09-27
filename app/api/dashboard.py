@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 from app.core.database import get_db
 from app.models.models import (
-    Asset, CVE, FeedItem, AssetVulnerability, SyslogEntry, ImportBatch, User,
+    Asset, CVE, FeedItem, AssetVulnerability, SyslogEntry, ImportBatch, User, UserRole,
     AssetType, AssetCriticality, CVESeverity, TriagStatus, FeedSourceType
 )
 from app.schemas.schemas import (

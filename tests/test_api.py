@@ -137,3 +137,13 @@ def test_cve_sync_nvd():
         assert "imported" in data
         assert "updated" in data
         assert "errors" in data
+
+
+def test_admin_users_page():
+    """TASK-M4: Verifico caricamento pagina amministrazione utenti /admin/users per admin"""
+    res_login = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    assert res_login.status_code == 200
+    token = res_login.json()["access_token"]
+    response = client.get("/admin/users", cookies={"session_token": token})
+    assert response.status_code == 200
+    assert "Pannello Amministrazione" in response.text
