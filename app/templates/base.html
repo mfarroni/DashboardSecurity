@@ -12,30 +12,33 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- Custom styles -->
+    <!-- Custom High-Contrast Styles -->
     <style>
-        .badge-critical { @apply bg-gradient-to-r from-red-600 to-rose-700 text-white font-bold shadow-sm; }
-        .badge-high { @apply bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold shadow-sm; }
-        .badge-medium { @apply bg-gradient-to-r from-yellow-400 to-amber-500 text-slate-900 font-bold shadow-sm; }
-        .badge-low { @apply bg-gradient-to-r from-sky-500 to-blue-600 text-white font-bold shadow-sm; }
-        .badge-none { @apply bg-slate-400 text-white font-medium; }
-        .badge-ioc { @apply bg-gradient-to-r from-purple-600 to-indigo-700 text-white font-bold shadow-sm; }
-        .badge-cisa { @apply bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-bold shadow-sm; }
+        .badge-critical { @apply bg-red-700 text-white font-extrabold shadow-sm border border-red-900 px-2.5 py-0.5 rounded; }
+        .badge-high { @apply bg-amber-600 text-white font-extrabold shadow-sm border border-amber-800 px-2.5 py-0.5 rounded; }
+        .badge-medium { @apply bg-amber-200 text-amber-950 font-extrabold border border-amber-500 px-2.5 py-0.5 rounded; }
+        .badge-low { @apply bg-blue-700 text-white font-extrabold shadow-sm border border-blue-900 px-2.5 py-0.5 rounded; }
+        .badge-none { @apply bg-slate-500 text-white font-bold px-2.5 py-0.5 rounded; }
+        .badge-ioc { @apply bg-purple-800 text-white font-extrabold shadow-sm border border-purple-950 px-2.5 py-0.5 rounded; }
+        .badge-cisa { @apply bg-emerald-800 text-white font-extrabold shadow-sm border border-emerald-950 px-2.5 py-0.5 rounded; }
         
         .cve-card { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
-        .cve-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
+        .cve-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15), 0 8px 10px -6px rgba(15, 23, 42, 0.1); }
         
-        .table-row:hover { background-color: #f8fafc; }
+        .table-row:hover { background-color: #f1f5f9; }
+        
+        /* High contrast table headers */
+        th { @apply text-slate-900 font-bold uppercase tracking-wider text-xs bg-slate-100 border-b-2 border-slate-300; }
         
         /* Scrollbar styling */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
         
-        /* Modal */
+        /* Modal Overlay & High-Contrast Content */
         .modal-overlay { 
-            background: rgba(15, 23, 42, 0.65); 
+            background: rgba(15, 23, 42, 0.75); 
             backdrop-filter: blur(4px);
         }
         .modal-content { 
@@ -45,7 +48,7 @@
     </style>
     {% block head %}{% endblock %}
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen antialiased">
+<body class="bg-slate-100 text-slate-900 min-h-screen antialiased">
     {% block content %}{% endblock %}
     
     {% block scripts %}{% endblock %}
