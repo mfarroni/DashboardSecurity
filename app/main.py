@@ -14,13 +14,31 @@ from app.api import assets, feed, cve, dashboard, syslog, imports, auth, setting
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50 MB limit
 
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from app.services.sync_worker import sync_worker
+
+scheduler = AsyncIOScheduler()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     init_db()
     print(f"Security Dashboard started on {settings.database_url}")
+    
+    # Register background periodic sync jobs
+    try:
+        scheduler.add_job(sync_worker.run_nvd_sync, 'interval', hours=settings.nvd_sync_interval_hours, kwargs={'days': 1})
+        scheduler.start()
+        print(f"APScheduler background sync service started (NVD sync interval: {settings.nvd_sync_interval_hours}h)")
+    except Exception as e:
+        print(f"APScheduler startup warning: {e}")
+        
     yield
     # Shutdown
+    if scheduler.running:
+        scheduler.shutdown()
+        print("APScheduler background sync service stopped")
     print("Security Dashboard shutting down")
 
 
