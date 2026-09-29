@@ -160,7 +160,7 @@ class FeedItemResponse(FeedItemBase):
 
 
 # CVE schemas
-CVE_ID_PATTERN = r"^CVE-\d{4}-\d{4,7}$"
+CVE_ID_PATTERN = r"^CVE-[A-Za-z0-9_-]+$"
 
 
 class CVEBase(BaseModel):
