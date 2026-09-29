@@ -282,13 +282,20 @@ async def correlate_cves(db: Session = Depends(get_db)):
     return await correlate_all(db)
 
 
+from app.models.models import (
+    CVE, Asset, AssetVulnerability, FeedItem, FeedItemCVE,
+    ImportBatch, CVESeverity, TriagStatus, MatchType, UserRole, User
+)
+from app.api.deps import require_role, get_current_user_optional
+
 @router.patch("/asset-vuln/{av_id}", response_model=AssetVulnerabilityResponse)
 async def update_asset_vuln_triage(
     av_id: int,
     update: AssetVulnerabilityUpdate,
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
-    """Aggiorna stato triage vulnerabilità su asset"""
+    """Aggiorna stato triage vulnerabilità su asset con tracciamento dell'utente reale"""
     av = db.query(AssetVulnerability).filter(AssetVulnerability.id == av_id).first()
     if not av:
         raise HTTPException(status_code=404, detail="Link asset-CVE non trovato")
@@ -296,7 +303,7 @@ async def update_asset_vuln_triage(
     if update.triage_status is not None:
         av.triage_status = update.triage_status
         av.triage_updated_at = datetime.utcnow()
-        av.triage_updated_by = "user"  # TODO: utente reale
+        av.triage_updated_by = current_user.username if current_user else "admin"
         if update.triage_status == TriagStatus.MITIGATA:
             av.acknowledged_at = datetime.utcnow()
     
