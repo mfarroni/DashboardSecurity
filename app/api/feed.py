@@ -221,11 +221,15 @@ async def import_feedhub_file(
         db.commit()
         
     except Exception as e:
-        batch.status = "failed"
-        batch.errors = [str(e)]
-        batch.completed_at = datetime.utcnow()
-        db.commit()
-        raise HTTPException(status_code=500, detail=f"Errore import: {str(e)}")
+        db.rollback()
+        try:
+            batch.status = "failed"
+            batch.errors = [str(e)]
+            batch.completed_at = datetime.utcnow()
+            db.commit()
+        except Exception:
+            db.rollback()
+        raise HTTPException(status_code=400, detail=f"Errore import: {str(e)}")
     
     return ImportBatchResponse.from_orm(batch)
 
@@ -339,11 +343,15 @@ async def import_cti_file(
         db.commit()
         
     except Exception as e:
-        batch.status = "failed"
-        batch.errors = [str(e)]
-        batch.completed_at = datetime.utcnow()
-        db.commit()
-        raise HTTPException(status_code=500, detail=f"Errore import: {str(e)}")
+        db.rollback()
+        try:
+            batch.status = "failed"
+            batch.errors = [str(e)]
+            batch.completed_at = datetime.utcnow()
+            db.commit()
+        except Exception:
+            db.rollback()
+        raise HTTPException(status_code=400, detail=f"Errore import: {str(e)}")
     
     return ImportBatchResponse.from_orm(batch)
 
