@@ -256,8 +256,18 @@
         formData.append('auto_find_cves', document.getElementById('syslog-find-cves').checked);
 
         fetch('/api/syslog/import', { method: 'POST', body: formData })
-        .then(r => r.json())
-        .then(data => {
+        .then(async r => {
+            let data;
+            try {
+                data = await r.json();
+            } catch (e) {
+                alert('Errore del server durante l\'importazione syslog (HTTP ' + r.status + ')');
+                return;
+            }
+            if (!r.ok) {
+                alert('Errore importazione syslog: ' + (data.detail || 'Impossibile completare l\'importazione'));
+                return;
+            }
             document.getElementById('syslog-import-result').classList.remove('hidden').innerHTML = 
                 `<div class="p-4 ${data.records_failed > 0 ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'} border rounded">
                     <h4 class="font-medium ${data.records_failed > 0 ? 'text-yellow-800' : 'text-green-800'}">
@@ -269,7 +279,7 @@
             htmx.ajax('GET', '/api/syslog', { target: '#syslog-table', swap: 'innerHTML' });
             htmx.ajax('GET', '/api/dashboard/syslog-stats', { target: '#syslog-stats-cards', swap: 'innerHTML' });
         })
-        .catch(err => alert('Errore: ' + err));
+        .catch(err => alert('Errore di connessione: ' + err));
     }
 
     document.addEventListener('keydown', e => {
