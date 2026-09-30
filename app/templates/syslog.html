@@ -239,7 +239,11 @@
         if (event.target.id === 'import-syslog-modal') {
             document.getElementById('import-syslog-modal').classList.add('hidden');
             document.getElementById('syslog-import-file').value = '';
-            document.getElementById('syslog-import-result').classList.add('hidden').innerHTML = '';
+            const resEl = document.getElementById('syslog-import-result');
+            if (resEl) {
+                resEl.classList.add('hidden');
+                resEl.innerHTML = '';
+            }
         }
     }
 
@@ -258,14 +262,18 @@
         fetch('/api/syslog/import', { method: 'POST', body: formData })
         .then(r => r.json())
         .then(data => {
-            document.getElementById('syslog-import-result').classList.remove('hidden').innerHTML = 
-                `<div class="p-4 ${data.records_failed > 0 ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'} border rounded">
-                    <h4 class="font-medium ${data.records_failed > 0 ? 'text-yellow-800' : 'text-green-800'}">
-                        ${data.records_failed > 0 ? 'Import Completato con Errori' : 'Import Completato'}
-                    </h4>
-                    <p class="text-sm mt-1">Importati: ${data.records_imported} | Falliti: ${data.records_failed}</p>
-                    ${data.errors ? `<details class="mt-2"><summary class="text-sm font-medium">Errori (${data.errors.length})</summary><ul class="text-xs text-red-600 mt-1">${data.errors.map(e => `<li>${e}</li>`).join('')}</ul></details>` : ''}
-                </div>`;
+            const resEl = document.getElementById('syslog-import-result');
+            if (resEl) {
+                resEl.classList.remove('hidden');
+                resEl.innerHTML = 
+                    `<div class="p-4 ${data.records_failed > 0 ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'} border rounded">
+                        <h4 class="font-medium ${data.records_failed > 0 ? 'text-yellow-800' : 'text-green-800'}">
+                            ${data.records_failed > 0 ? 'Import Completato con Errori' : 'Import Completato'}
+                        </h4>
+                        <p class="text-sm mt-1">Importati: ${data.records_imported} | Falliti: ${data.records_failed}</p>
+                        ${data.errors ? `<details class="mt-2"><summary class="text-sm font-medium">Errori (${data.errors.length})</summary><ul class="text-xs text-red-600 mt-1">${data.errors.map(e => `<li>${e}</li>`).join('')}</ul></details>` : ''}
+                    </div>`;
+            }
             htmx.ajax('GET', '/api/syslog', { target: '#syslog-table', swap: 'innerHTML' });
             htmx.ajax('GET', '/api/dashboard/syslog-stats', { target: '#syslog-stats-cards', swap: 'innerHTML' });
         })

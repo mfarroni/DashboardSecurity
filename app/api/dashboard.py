@@ -12,7 +12,7 @@ from app.models.models import (
 )
 from app.schemas.schemas import (
     DashboardOverview, AssetWithVulnsResponse, PaginatedResponse,
-    SyslogEntryResponse
+    SyslogEntryResponse, AssetVulnerabilityResponse
 )
 from app.api.deps import get_current_user_optional
 
