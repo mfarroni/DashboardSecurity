@@ -131,6 +131,13 @@ async def update_asset(asset_id: int, asset_update: AssetUpdate, db: Session = D
     return AssetResponse.from_orm(asset)
 
 
+from pydantic import BaseModel
+
+
+class BulkDeleteRequest(BaseModel):
+    asset_ids: List[int]
+
+
 @router.delete("/{asset_id}", status_code=204, dependencies=[Depends(require_role([UserRole.ADMIN]))])
 async def delete_asset(asset_id: int, db: Session = Depends(get_db)):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -139,6 +146,16 @@ async def delete_asset(asset_id: int, db: Session = Depends(get_db)):
     
     db.delete(asset)
     db.commit()
+
+
+@router.post("/bulk-delete", dependencies=[Depends(require_role([UserRole.ADMIN]))])
+async def bulk_delete_assets(body: BulkDeleteRequest, db: Session = Depends(get_db)):
+    if not body.asset_ids:
+        raise HTTPException(status_code=400, detail="Nessun asset selezionato")
+    
+    deleted_count = db.query(Asset).filter(Asset.id.in_(body.asset_ids)).delete(synchronize_session=False)
+    db.commit()
+    return {"deleted_count": deleted_count}
 
 
 @router.post("/import/preview", response_model=ImportPreviewResponse)

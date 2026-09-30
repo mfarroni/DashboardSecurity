@@ -100,6 +100,25 @@ def test_asset_crud():
     assert response.status_code == 204
 
 
+def test_bulk_delete_assets():
+    res_login = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    assert res_login.status_code == 200
+    cookies = res_login.cookies
+
+    # Create 2 test assets
+    a1 = client.post("/api/assets", json={"tipo": "software", "nome": "BulkApp1", "vendor": "BulkVendor1"}, cookies=cookies).json()
+    a2 = client.post("/api/assets", json={"tipo": "software", "nome": "BulkApp2", "vendor": "BulkVendor2"}, cookies=cookies).json()
+
+    # Bulk delete
+    res = client.post("/api/assets/bulk-delete", json={"asset_ids": [a1["id"], a2["id"]]}, cookies=cookies)
+    assert res.status_code == 200
+    assert res.json()["deleted_count"] == 2
+
+    # Verify deleted
+    assert client.get(f"/api/assets/{a1['id']}", cookies=cookies).status_code == 404
+    assert client.get(f"/api/assets/{a2['id']}", cookies=cookies).status_code == 404
+
+
 def test_htmx_table_responses():
     """Verifica allineamento colonne HTMX per syslog, feed, vulnerabilita, perimetro"""
     r_syslog = client.get("/api/syslog", headers={"HX-Request": "true"})
