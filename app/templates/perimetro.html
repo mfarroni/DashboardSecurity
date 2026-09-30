@@ -190,13 +190,23 @@
             method: 'POST',
             body: formData
         })
-        .then(r => r.json())
-        .then(data => {
+        .then(async r => {
+            let data;
+            try {
+                data = await r.json();
+            } catch (e) {
+                alert('Errore del server durante la lettura dell\'anteprima (HTTP ' + r.status + ')');
+                return;
+            }
+            if (!r.ok) {
+                alert('Errore anteprima: ' + (data.detail || 'Formato file non valido'));
+                return;
+            }
             currentMapping = data.suggested_mapping || {};
             renderMappingEditor(data);
             document.getElementById('import-preview').classList.remove('hidden');
         })
-        .catch(err => alert('Errore: ' + err));
+        .catch(err => alert('Errore di connessione: ' + err));
     }
 
     function renderMappingEditor(data) {
@@ -255,8 +265,18 @@
             method: 'POST',
             body: formData
         })
-        .then(r => r.json())
-        .then(data => {
+        .then(async r => {
+            let data;
+            try {
+                data = await r.json();
+            } catch (e) {
+                alert('Errore del server durante l\'importazione (HTTP ' + r.status + ')');
+                return;
+            }
+            if (!r.ok) {
+                alert('Errore importazione: ' + (data.detail || 'Impossibile completare l\'importazione'));
+                return;
+            }
             document.getElementById('import-result').classList.remove('hidden').innerHTML = 
                 `<div class="p-4 bg-green-50 border border-green-200 rounded">
                     <h4 class="font-medium text-green-800">Import Completato</h4>
@@ -266,7 +286,7 @@
             // Refresh table
             htmx.ajax('GET', '/api/perimetro', { target: '#assets-table', swap: 'innerHTML' });
         })
-        .catch(err => alert('Errore: ' + err));
+        .catch(err => alert('Errore di connessione: ' + err));
     }
 
     // Close modal on Escape

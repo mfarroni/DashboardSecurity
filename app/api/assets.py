@@ -265,28 +265,59 @@ async def execute_import(
                 for target, source in column_mapping.items():
                     val = row.get(source)
                     if not pd.isna(val):
-                        asset_data[target] = val
+                        asset_data[target] = str(val).strip() if isinstance(val, str) else val
                 
-                # Valida tipo
-                if asset_data.get("tipo") not in [e.value for e in AssetType]:
-                    asset_data["tipo"] = AssetType.SOFTWARE  # default
+                # Valida ed assegna Enum tipo
+                tipo_val = str(asset_data.get("tipo", "")).strip().lower()
+                if tipo_val == "hardware":
+                    asset_data["tipo"] = AssetType.HARDWARE
+                else:
+                    asset_data["tipo"] = AssetType.SOFTWARE
                 
-                # Valida criticità
-                if asset_data.get("criticita") and asset_data["criticita"] not in [e.value for e in AssetCriticality]:
+                # Valida ed assegna Enum criticità
+                crit_val = str(asset_data.get("criticita", "")).strip().lower()
+                if crit_val in [e.value for e in AssetCriticality]:
+                    asset_data["criticita"] = AssetCriticality(crit_val)
+                else:
                     asset_data["criticita"] = None
                 
-                # Crea asset
-                asset = Asset(
-                    **asset_data,
-                    imported_at=datetime.utcnow(),
-                    import_batch_id=batch_id,
-                )
-                db.add(asset)
+                # Pulisci CPE vuoto
+                if "cpe" in asset_data and not asset_data["cpe"]:
+                    asset_data["cpe"] = None
+
+                # Upsert check: Se l'asset esiste già per CPE o (vendor + nome + versione), aggiornalo
+                existing_asset = None
+                if asset_data.get("cpe"):
+                    existing_asset = db.query(Asset).filter(Asset.cpe == asset_data["cpe"]).first()
+                if not existing_asset and asset_data.get("vendor") and asset_data.get("nome"):
+                    query = db.query(Asset).filter(
+                        Asset.vendor == asset_data["vendor"],
+                        Asset.nome == asset_data["nome"]
+                    )
+                    if asset_data.get("versione"):
+                        query = query.filter(Asset.versione == asset_data["versione"])
+                    existing_asset = query.first()
+
+                if existing_asset:
+                    for field, value in asset_data.items():
+                        setattr(existing_asset, field, value)
+                    existing_asset.imported_at = datetime.utcnow()
+                    existing_asset.import_batch_id = batch_id
+                    existing_asset.updated_at = datetime.utcnow()
+                else:
+                    asset = Asset(
+                        **asset_data,
+                        imported_at=datetime.utcnow(),
+                        import_batch_id=batch_id,
+                    )
+                    db.add(asset)
+                
                 imported += 1
                 
             except Exception as e:
                 failed += 1
                 errors.append(f"Riga {idx+2}: {str(e)}")
+
         
         db.commit()
         
@@ -299,11 +330,16 @@ async def execute_import(
         db.commit()
         
     except Exception as e:
-        batch.status = "failed"
-        batch.errors = [str(e)]
-        batch.completed_at = datetime.utcnow()
-        db.commit()
-        raise HTTPException(status_code=500, detail=f"Errore import: {str(e)}")
+        db.rollback()
+        try:
+            batch.status = "failed"
+            batch.errors = [str(e)]
+            batch.completed_at = datetime.utcnow()
+            db.commit()
+        except Exception:
+            db.rollback()
+        raise HTTPException(status_code=400, detail=f"Errore importazione: {str(e)}")
+
     
     return ImportBatchResponse.from_orm(batch)
 
