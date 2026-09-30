@@ -180,7 +180,11 @@
     function resetFeedImportModal() {
         document.getElementById('feed-import-file').value = '';
         document.getElementById('feed-import-source-name').classList.add('hidden');
-        document.getElementById('feed-import-result').classList.add('hidden').innerHTML = '';
+        const resEl = document.getElementById('feed-import-result');
+        if (resEl) {
+            resEl.classList.add('hidden');
+            resEl.innerHTML = '';
+        }
     }
 
     document.getElementById('feed-import-type').addEventListener('change', function() {
@@ -206,30 +210,24 @@
         const url = type === 'feedhub' ? '/api/feed/import/feedhub' : '/api/feed/import/cti';
 
         fetch(url, { method: 'POST', body: formData })
-        .then(async r => {
-            let data;
-            try {
-                data = await r.json();
-            } catch (e) {
-                alert('Errore del server durante l\'importazione dei feed (HTTP ' + r.status + ')');
-                return;
+        .then(r => r.json())
+        .then(data => {
+            const resEl = document.getElementById('feed-import-result');
+            if (resEl) {
+                resEl.classList.remove('hidden');
+                resEl.innerHTML = 
+                    `<div class="p-4 ${data.records_failed > 0 ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'} border rounded">
+                        <h4 class="font-medium ${data.records_failed > 0 ? 'text-yellow-800' : 'text-green-800'}">
+                            ${data.records_failed > 0 ? 'Import Completato con Errori' : 'Import Completato'}
+                        </h4>
+                        <p class="text-sm mt-1">Importati: ${data.records_imported} | Falliti: ${data.records_failed}</p>
+                        ${data.errors ? `<details class="mt-2"><summary class="text-sm font-medium">Errori (${data.errors.length})</summary><ul class="text-xs text-red-600 mt-1">${data.errors.map(e => `<li>${e}</li>`).join('')}</ul></details>` : ''}
+                    </div>`;
             }
-            if (!r.ok) {
-                alert('Errore importazione feed: ' + (data.detail || 'Impossibile completare l\'importazione'));
-                return;
-            }
-            document.getElementById('feed-import-result').classList.remove('hidden').innerHTML = 
-                `<div class="p-4 ${data.records_failed > 0 ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'} border rounded">
-                    <h4 class="font-medium ${data.records_failed > 0 ? 'text-yellow-800' : 'text-green-800'}">
-                        ${data.records_failed > 0 ? 'Import Completato con Errori' : 'Import Completato'}
-                    </h4>
-                    <p class="text-sm mt-1">Importati: ${data.records_imported} | Falliti: ${data.records_failed}</p>
-                    ${data.errors ? `<details class="mt-2"><summary class="text-sm font-medium">Errori (${data.errors.length})</summary><ul class="text-xs text-red-600 mt-1">${data.errors.map(e => `<li>${e}</li>`).join('')}</ul></details>` : ''}
-                </div>`;
             // Refresh table
             htmx.ajax('GET', '/api/feed', { target: '#feed-table', swap: 'innerHTML' });
         })
-        .catch(err => alert('Errore di connessione: ' + err));
+        .catch(err => alert('Errore: ' + err));
     }
 
     document.addEventListener('keydown', e => {
