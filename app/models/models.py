@@ -305,3 +305,59 @@ class UserSettings(Base):
     value = Column(JSON, nullable=False)
     description = Column(Text, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class ProviderScope(str, enum.Enum):
+    VULNERABILITY = "VULNERABILITY"
+    FEED_CTI = "FEED_CTI"
+    SYSLOG = "SYSLOG"
+    MISP_IOC = "MISP_IOC"
+
+
+class IOCType(str, enum.Enum):
+    IP = "ip"
+    DOMAIN = "domain"
+    HASH_MD5 = "md5"
+    HASH_SHA256 = "sha256"
+    URL = "url"
+    YARA = "yara"
+    OTHER = "other"
+
+
+class Provider(Base):
+    __tablename__ = "providers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(50), unique=True, nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    scopes = Column(JSON, nullable=False)  # List e.g. ["MISP_IOC", "FEED_CTI"]
+    api_key = Column(String(255), nullable=True)
+    endpoint_url = Column(String(500), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class IOCEntry(Base):
+    __tablename__ = "ioc_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ioc_type = Column(SQLEnum(IOCType), nullable=False, index=True)
+    value = Column(String(500), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    threat_level = Column(String(50), default="MEDIUM", nullable=False, index=True)  # CRITICAL, HIGH, MEDIUM, LOW
+    tags = Column(JSON, nullable=True)
+    providers = Column(JSON, nullable=False)  # List of provider codes/names
+    first_seen = Column(DateTime, default=datetime.utcnow, nullable=False)
+    last_seen = Column(DateTime, default=datetime.utcnow, nullable=False)
+    raw_data = Column(JSON, nullable=True)
+    relevance_score = Column(Float, default=0.0, nullable=False, index=True)  # 0.0 - 100.0
+    relevance_reason = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("ioc_type", "value", name="uq_ioc_type_value"),
+        Index("ix_ioc_type_score", "ioc_type", "relevance_score"),
+    )

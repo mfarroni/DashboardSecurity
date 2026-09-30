@@ -65,6 +65,13 @@ async def syslog_page(request: Request, current_user: Optional[User] = Depends(g
     return request.app.state.templates.TemplateResponse("syslog.html", {"request": request, "current_user": current_user})
 
 
+@router.get("/misp-ioc", response_class=HTMLResponse)
+async def misp_ioc_page(request: Request, current_user: Optional[User] = Depends(get_current_user_optional)):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    return request.app.state.templates.TemplateResponse("misp_ioc.html", {"request": request, "current_user": current_user})
+
+
 @router.get("/admin/users", response_class=HTMLResponse)
 async def users_admin_page(request: Request, current_user: Optional[User] = Depends(get_current_user_optional), db: Session = Depends(get_db)):
     if not current_user:

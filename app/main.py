@@ -8,7 +8,7 @@ import uvicorn
 from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.database import init_db
-from app.api import assets, feed, cve, dashboard, syslog, imports, auth, settings as settings_api
+from app.api import assets, feed, cve, dashboard, syslog, imports, auth, settings as settings_api, providers, misp_ioc
 
 
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50 MB limit
@@ -88,6 +88,8 @@ app.include_router(cve.router, prefix="/api/cve", tags=["CVE"])
 app.include_router(syslog.router, prefix="/api/syslog", tags=["Syslog"])
 app.include_router(imports.router, prefix="/api/import", tags=["Import"])
 app.include_router(settings_api.router, prefix="/api/settings", tags=["Settings"])
+app.include_router(providers.router, prefix="/api/providers", tags=["Providers"])
+app.include_router(misp_ioc.router, prefix="/api/misp-ioc", tags=["MISP/IOC"])
 
 
 @app.get("/health")

@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}MISP & IOC Threat Intelligence - Security Dashboard{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 pb-12">
+    <header class="bg-white border-b border-gray-200 py-6 mb-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Threat Intelligence (MISP & IOC)</h1>
+                    <p class="text-gray-500 mt-1 text-sm">Indici di compromissione unificati e deduplicati con Grado di Attinenza al Perimetro</p>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    <button id="btn-ioc-bulk-delete" onclick="executeIocBulkDelete()" disabled
+                            class="bg-red-600 opacity-50 cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition">
+                        <i class="fas fa-trash-alt mr-2"></i>Elimina Selezionati (<span id="ioc-selected-count">0</span>)
+                    </button>
+                    <button onclick="document.getElementById('import-ioc-modal').classList.remove('hidden')" 
+                            class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
+                        <i class="fas fa-file-upload mr-2"></i>Importa File (Multi-File)
+                    </button>
+                    <button onclick="openSyncIocModal()" 
+                            class="bg-emerald-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-700">
+                        <i class="fas fa-sync-alt mr-2"></i>Sync Sincrona API
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Filters -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+            <div class="flex flex-wrap gap-4 items-center">
+                <select id="filter-ioc-type" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        hx-get="/api/misp-ioc" hx-target="#ioc-table" hx-trigger="change"
+                        hx-include="[id='filter-ioc-threat'],[id='filter-ioc-min-score'],[id='filter-ioc-search']">
+                    <option value="">Tutti i tipi IoC</option>
+                    <option value="ip">IP Address</option>
+                    <option value="domain">Dominio / FQDN</option>
+                    <option value="md5">Hash MD5</option>
+                    <option value="sha256">Hash SHA256</option>
+                    <option value="url">URL / Endpoint</option>
+                    <option value="yara">Regola YARA</option>
+                </select>
+                <select id="filter-ioc-threat" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        hx-get="/api/misp-ioc" hx-target="#ioc-table" hx-trigger="change"
+                        hx-include="[id='filter-ioc-type'],[id='filter-ioc-min-score'],[id='filter-ioc-search']">
+                    <option value="">Tutti i livelli di minaccia</option>
+                    <option value="CRITICAL">Critica</option>
+                    <option value="HIGH">Alta</option>
+                    <option value="MEDIUM">Media</option>
+                    <option value="LOW">Bassa</option>
+                </select>
+                <select id="filter-ioc-min-score" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        hx-get="/api/misp-ioc" hx-target="#assets-table" hx-trigger="change"
+                        hx-include="[id='filter-ioc-type'],[id='filter-ioc-threat'],[id='filter-ioc-search']">
+                    <option value="">Tutti i gradi attinenza</option>
+                    <option value="100">🔴 Solo 100% (Critico Perimetro)</option>
+                    <option value="75">🟠 >= 75% (Alto Vulnerabilità)</option>
+                    <option value="50">🟡 >= 50% (Medio Vendor)</option>
+                </select>
+                <input type="text" id="filter-ioc-search" placeholder="Cerca valore IoC o descrizione..." 
+                       class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64"
+                       hx-get="/api/misp-ioc" hx-target="#ioc-table" hx-trigger="keyup changed delay:300ms"
+                       hx-include="[id='filter-ioc-type'],[id='filter-ioc-threat'],[id='filter-ioc-min-score']">
+            </div>
+        </div>
+
+        <!-- IoC Deduplicated Master Table -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b border-gray-200 text-xs text-gray-500 uppercase tracking-wider">
+                        <tr>
+                            <th class="px-3 py-3 w-10 text-center">
+                                <input type="checkbox" id="select-all-iocs" onclick="toggleSelectAllIocs(this)" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" title="Seleziona Tutti">
+                            </th>
+                            <th class="px-4 py-3 text-left">Tipo</th>
+                            <th class="px-4 py-3 text-left">Valore Indice (IoC)</th>
+                            <th class="px-4 py-3 text-left">Fornitori / Fonti (Unione)</th>
+                            <th class="px-4 py-3 text-left">Tag / TTP</th>
+                            <th class="px-4 py-3 text-left cursor-pointer hover:bg-gray-100 transition" onclick="openRelevanceModal()" title="Clicca per visualizzare la formula di calcolo">
+                                Grado Attinenza Perimetro <i class="fas fa-info-circle text-blue-500 ml-1"></i>
+                            </th>
+                            <th class="px-4 py-3 text-right">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ioc-table" class="divide-y divide-gray-200" hx-get="/api/misp-ioc" hx-trigger="load">
+                        <tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">Caricamento Indici di Compromissione...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Import Multi-File Async Modal -->
+    <div id="import-ioc-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4" onclick="closeImportIocModal(event)">
+        <div class="bg-white rounded-lg shadow-xl max-w-xl w-full" onclick="event.stopPropagation()">
+            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-900">Importazione Asincrona Multi-File (MISP / IoC)</h2>
+                <button onclick="document.getElementById('import-ioc-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Seleziona Fornitore Sorgente</label>
+                    <input type="text" id="ioc-provider-input" placeholder="es. MISP Interno, ThreatFox, Abuse.ch, AlienVault" 
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm mb-3" value="MISP Import">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Seleziona Uno o Più File (.json MISP, .stix, .csv, .txt)</label>
+                    <input type="file" id="ioc-files-input" multiple accept=".json,.stix,.taxii,.csv,.txt" 
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button onclick="executeIocAsyncImport()" class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+                        <i class="fas fa-upload mr-2"></i>Avvia Ingestion Multi-File
+                    </button>
+                    <button onclick="document.getElementById('import-ioc-modal').classList.add('hidden')" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-400">
+                        Annulla
+                    </button>
+                </div>
+                <div id="ioc-import-result" class="hidden mt-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sync Sincrona API Modal -->
+    <div id="sync-ioc-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h2 class="text-lg font-semibold">Sincronizzazione Sincrona via API Key</h2>
+                <button onclick="document.getElementById('sync-ioc-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <p class="text-sm text-gray-600">Seleziona il Fornitore configurato con API Key per avviare l'interrogazione remota immediata:</p>
+                <select id="sync-provider-select" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
+                    <option value="">Caricamento fornitori attivi...</option>
+                </select>
+                <div class="flex gap-3 pt-2">
+                    <button onclick="executeSyncProviderApi()" class="bg-emerald-600 text-white px-4 py-2 rounded-md text-sm hover:bg-emerald-700">
+                        <i class="fas fa-sync mr-2"></i>Interroga Fornitore Ora
+                    </button>
+                    <button onclick="document.getElementById('sync-ioc-modal').classList.add('hidden')" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-400">
+                        Annulla
+                    </button>
+                </div>
+                <div id="sync-ioc-result" class="hidden mt-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Relevance Explanation Formula Modal -->
+    <div id="relevance-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <i class="fas fa-calculator text-blue-600"></i> Calcolo del Grado di Attinenza col Perimetro
+                </h2>
+                <button onclick="closeRelevanceModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="space-y-4 text-sm text-gray-700">
+                <p>Il <strong>Grado di Attinenza (0% - 100%)</strong> determina quanto un Indice di Compromissione (IoC) impatta direttamente l'organizzazione. Viene calcolato automaticamente dal sistema tramite la seguente formula:</p>
+
+                <div class="p-3 bg-blue-50 border border-blue-200 rounded font-mono text-xs text-blue-900 text-center font-bold">
+                    Score Attinenza = max(Match Syslog, Match Asset, Match CVE, Match Vendor)
+                </div>
+
+                <div class="space-y-3">
+                    <div class="p-3 bg-red-50 border border-red-200 rounded">
+                        <span class="font-bold text-red-800">🔴 100% (CRITICO - Match Diretto):</span>
+                        <p class="text-xs text-red-700 mt-1">L'IoC (IP, Dominio o Hash) è stato rilevato negli eventi **Syslog** attivi o corrisponde all'IP/Nome di un **Asset del Perimetro**.</p>
+                    </div>
+                    <div class="p-3 bg-orange-50 border border-orange-200 rounded">
+                        <span class="font-bold text-orange-800">🟠 75% (ALTO - Match Vulnerabilità):</span>
+                        <p class="text-xs text-orange-700 mt-1">L'IoC è associato a una CVE presente in un **Asset del Perimetro**.</p>
+                    </div>
+                    <div class="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                        <span class="font-bold text-yellow-800">🟡 50% (MEDIO - Match Vendor/Sistema):</span>
+                        <p class="text-xs text-yellow-700 mt-1">L'IoC riguarda un Vendor o software presente nei sistemi del perimetro (es. Microsoft, Fortinet, Apache).</p>
+                    </div>
+                    <div class="p-3 bg-gray-50 border border-gray-200 rounded">
+                        <span class="font-bold text-gray-800">⚪ 0% - 25% (BASSO / ININFLUENTE):</span>
+                        <p class="text-xs text-gray-600 mt-1">Minaccia generica o globale senza riscontro diretto con gli asset o log interni.</p>
+                    </div>
+                </div>
+
+                <p class="text-xs text-gray-500 pt-2 border-t">
+                    <i class="fas fa-sliders-h mr-1"></i> I pesi e la logica di calcolo possono essere personalizzati su richiesta nel modulo backend <code>app/services/relevance_calculator.py</code>.
+                </p>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button onclick="closeRelevanceModal()" class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+                    Ho Capito
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openRelevanceModal() {
+        document.getElementById('relevance-modal').classList.remove('hidden');
+    }
+
+    function closeRelevanceModal() {
+        document.getElementById('relevance-modal').classList.add('hidden');
+    }
+
+    function toggleSelectAllIocs(master) {
+        document.querySelectorAll('.ioc-checkbox').forEach(cb => cb.checked = master.checked);
+        updateIocBulkDeleteBtn();
+    }
+
+    function updateIocBulkDeleteBtn() {
+        const checked = document.querySelectorAll('.ioc-checkbox:checked');
+        const btn = document.getElementById('btn-ioc-bulk-delete');
+        const countSpan = document.getElementById('ioc-selected-count');
+        if (countSpan) countSpan.textContent = checked.length;
+        if (btn) {
+            if (checked.length > 0) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+    }
+
+    function deleteIoc(id) {
+        if (!confirm('Eliminare questo Indice di Compromissione?')) return;
+        fetch(`/api/misp-ioc/${id}`, { method: 'DELETE' })
+        .then(r => {
+            if (r.ok || r.status === 204) {
+                htmx.ajax('GET', '/api/misp-ioc', { target: '#ioc-table', swap: 'innerHTML' });
+            } else {
+                alert('Errore durante l\'eliminazione');
+            }
+        });
+    }
+
+    function executeIocBulkDelete() {
+        const checked = document.querySelectorAll('.ioc-checkbox:checked');
+        const ids = Array.from(checked).map(cb => parseInt(cb.value));
+        if (ids.length === 0) return;
+        if (!confirm(`Eliminare i ${ids.length} IoC selezionati?`)) return;
+
+        fetch('/api/misp-ioc/bulk-delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ioc_ids: ids })
+        })
+        .then(r => r.json())
+        .then(data => {
+            alert(`Eliminati ${data.deleted_count || ids.length} IoC.`);
+            updateIocBulkDeleteBtn();
+            htmx.ajax('GET', '/api/misp-ioc', { target: '#ioc-table', swap: 'innerHTML' });
+        });
+    }
+
+    function executeIocAsyncImport() {
+        const fileInput = document.getElementById('ioc-files-input');
+        if (!fileInput.files.length) {
+            alert('Seleziona almeno un file');
+            return;
+        }
+
+        const formData = new FormData();
+        const providerName = document.getElementById('ioc-provider-input').value || 'Generico';
+        formData.append('provider_name', providerName);
+        for (let i = 0; i < fileInput.files.length; i++) {
+            formData.append('files', fileInput.files[i]);
+        }
+
+        fetch('/api/misp-ioc/import/async', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            const resEl = document.getElementById('ioc-import-result');
+            if (resEl) {
+                resEl.classList.remove('hidden');
+                resEl.innerHTML = `<div class="p-3 bg-green-50 border border-green-200 rounded text-xs text-green-800">
+                    Importati: ${data.records_imported} IoC unificati | Falliti: ${data.records_failed}
+                </div>`;
+            }
+            htmx.ajax('GET', '/api/misp-ioc', { target: '#ioc-table', swap: 'innerHTML' });
+        })
+        .catch(err => alert('Errore importazione: ' + err));
+    }
+
+    function openSyncIocModal() {
+        document.getElementById('sync-ioc-modal').classList.remove('hidden');
+        fetch('/api/providers?scope=MISP_IOC')
+        .then(r => r.json())
+        .then(data => {
+            const select = document.getElementById('sync-provider-select');
+            if (data.length === 0) {
+                select.innerHTML = '<option value="">Nessun Fornitore MISP/IOC censito. Aggiungilo dal pannello Admin</option>';
+            } else {
+                select.innerHTML = data.map(p => `<option value="${p.id}">${p.name} (${p.endpoint_url || 'No URL'})</option>`).join('');
+            }
+        });
+    }
+
+    function executeSyncProviderApi() {
+        const select = document.getElementById('sync-provider-select');
+        const providerId = select.value;
+        if (!providerId) {
+            alert('Seleziona un fornitore valido');
+            return;
+        }
+
+        fetch(`/api/misp-ioc/sync/provider/${providerId}`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            const resEl = document.getElementById('sync-ioc-result');
+            if (resEl) {
+                resEl.classList.remove('hidden');
+                resEl.innerHTML = `<div class="p-3 bg-green-50 border border-green-200 rounded text-xs text-green-800">
+                    Sync completata con ${data.provider}: ${data.records_imported} IoC sincronizzati
+                </div>`;
+            }
+            htmx.ajax('GET', '/api/misp-ioc', { target: '#ioc-table', swap: 'innerHTML' });
+        })
+        .catch(err => alert('Errore sincronizzazione: ' + err));
+    }
+</script>
+{% endblock %}

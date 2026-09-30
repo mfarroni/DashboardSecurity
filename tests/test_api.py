@@ -166,3 +166,67 @@ def test_admin_users_page():
     response = client.get("/admin/users", cookies={"session_token": token})
     assert response.status_code == 200
     assert "Pannello Amministrazione" in response.text
+
+
+import json
+
+def test_provider_management_and_misp_ioc_ingestion():
+    """Test completo per gestione Fornitori (Provider) e Ingestion/Deduplicazione IoC"""
+    res_login = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    assert res_login.status_code == 200
+    cookies = res_login.cookies
+
+    # 1. Create Provider with scopes
+    p_res = client.post("/api/providers", json={
+        "code": "misp_test_provider",
+        "name": "Test MISP Provider",
+        "description": "Provider per test CTI",
+        "scopes": ["MISP_IOC", "FEED_CTI"],
+        "api_key": "test_api_key_123",
+        "endpoint_url": "https://misp.example.com/api"
+    }, cookies=cookies)
+    assert p_res.status_code == 201
+    p_data = p_res.json()
+    assert p_data["code"] == "misp_test_provider"
+    assert "MISP_IOC" in p_data["scopes"]
+
+    # 2. List Providers
+    list_res = client.get("/api/providers?scope=MISP_IOC", cookies=cookies)
+    assert list_res.status_code == 200
+    assert len(list_res.json()) >= 1
+
+    # 3. Async Multi-File Import IoCs
+    misp_json_sample = json.dumps({
+        "Event": {
+            "info": "Test Campaign APT",
+            "threat_level_id": "1",
+            "Attribute": [
+                {"type": "ip-dst", "value": "198.51.100.42", "comment": "C2 server"},
+                {"type": "md5", "value": "e1170b8dd9919b33b50055e036511242", "comment": "Malware payload"}
+            ]
+        }
+    }).encode("utf-8")
+
+    files = [
+        ("files", ("sample_misp.json", misp_json_sample, "application/json"))
+    ]
+    data = {"provider_name": "Test MISP Provider"}
+
+    imp_res = client.post("/api/misp-ioc/import/async", files=files, data=data, cookies=cookies)
+    assert imp_res.status_code == 200
+    assert imp_res.json()["records_imported"] == 2
+
+    # 4. Re-import same IoC to verify deduplication
+    imp_res2 = client.post("/api/misp-ioc/import/async", files=files, data={"provider_name": "Second Source"}, cookies=cookies)
+    assert imp_res2.status_code == 200
+
+    # 5. Get IoC list & check HTMX response
+    r_ioc = client.get("/api/misp-ioc", headers={"HX-Request": "true"}, cookies=cookies)
+    assert r_ioc.status_code == 200
+    assert "198.51.100.42" in r_ioc.text
+    assert "e1170b8dd9919b33b50055e036511242" in r_ioc.text
+
+    # 6. Test HTML page route
+    r_page = client.get("/misp-ioc", cookies=cookies)
+    assert r_page.status_code == 200
+    assert "Threat Intelligence (MISP & IOC)" in r_page.text

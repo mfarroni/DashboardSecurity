@@ -352,3 +352,50 @@ class SourceRegistryResponse(BaseModel):
     class Config:
         orm_mode = True
         from_attributes = True
+
+
+class ProviderCreate(BaseModel):
+    code: str = Field(..., min_length=2, max_length=50)
+    name: str = Field(..., min_length=2, max_length=100)
+    description: Optional[str] = None
+    scopes: List[str]  # e.g. ["MISP_IOC", "FEED_CTI"]
+    api_key: Optional[str] = None
+    endpoint_url: Optional[str] = None
+    is_active: bool = True
+
+
+class ProviderResponse(BaseModel):
+    id: int
+    code: str
+    name: str
+    description: Optional[str] = None
+    scopes: List[str]
+    api_key: Optional[str] = None
+    endpoint_url: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+        from_attributes = True
+
+
+class IOCEntryResponse(BaseModel):
+    id: int
+    ioc_type: str
+    value: str
+    description: Optional[str] = None
+    threat_level: str
+    tags: Optional[List[str]] = None
+    providers: List[str]
+    first_seen: datetime
+    last_seen: datetime
+    relevance_score: float
+    relevance_reason: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+        from_attributes = True
