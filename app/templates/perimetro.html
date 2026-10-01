@@ -266,6 +266,7 @@
         .catch(err => alert('Errore di connessione: ' + err));
     }
 
+
     // Selection & Bulk Actions State (Unlimited, random order selection)
     const selectedAssetIds = new Set();
 
@@ -280,7 +281,6 @@
     }
 
     function handleRowClick(event, assetId) {
-        // Prevent row toggle if clicking directly on buttons, links or inputs
         const target = event.target;
         if (target.closest('button') || target.closest('a') || target.tagName === 'INPUT' || target.tagName === 'I') {
             return;
@@ -344,6 +344,14 @@
         }
     }
 
+    // Event Delegation per checkbox
+    document.addEventListener('change', function(e) {
+        if (e.target.matches('.asset-checkbox')) {
+            const assetId = e.target.value;
+            handleCheckboxChange(e.target, assetId);
+        }
+    });
+
     document.body.addEventListener('htmx:afterSwap', function(e) {
         if (e.detail && e.detail.target && e.detail.target.id === 'assets-table') {
             updateBulkDeleteBtn();
@@ -353,14 +361,17 @@
     function deleteAsset(id) {
         if (!confirm('Sei sicuro di voler eliminare questo asset dal perimetro?')) return;
         
-        fetch(`/api/assets/${id}`, { method: 'DELETE', credentials: 'include' })
+        fetch(`/api/assets/${id}`, { 
+            method: 'DELETE',
+            credentials: 'include'
+        })
         .then(r => {
             if (r.ok || r.status === 204) {
                 selectedAssetIds.delete(parseInt(id));
                 updateBulkDeleteBtn();
                 htmx.ajax('GET', '/api/perimetro', { target: '#assets-table', swap: 'innerHTML' });
             } else {
-                alert('Errore durante l\'eliminazione dell\'asset.');
+                alert('Errore durante l'eliminazione dell'asset.');
             }
         })
         .catch(err => alert('Errore di connessione: ' + err));
@@ -376,6 +387,7 @@
         fetch('/api/assets/bulk-delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ asset_ids: ids })
         })
         .then(r => r.json())
@@ -387,9 +399,10 @@
             updateBulkDeleteBtn();
             htmx.ajax('GET', '/api/perimetro', { target: '#assets-table', swap: 'innerHTML' });
         })
-        .catch(err => alert('Errore durante l\'eliminazione massiva: ' + err));
+        .catch(err => alert('Errore durante l'eliminazione massiva: ' + err));
     }
 
+    // Close modal on Escape
     // Close modal on Escape
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
