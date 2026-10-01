@@ -161,8 +161,7 @@
         const formData = new FormData();
         formData.append('file', file);
 
-        fetch('/api/assets/import/preview', {
-            method: 'POST',
+        fetch('/api/assets/import/preview', { method: 'POST', credentials: 'include' }),
             body: formData
         })
         .then(async r => {
@@ -236,8 +235,7 @@
         formData.append('file', file);
         formData.append('mapping', JSON.stringify(mapping));
 
-        fetch('/api/assets/import/execute', {
-            method: 'POST',
+        fetch('/api/assets/import/execute', { method: 'POST', credentials: 'include' }),
             body: formData
         })
         .then(async r => {
@@ -355,7 +353,7 @@
     function deleteAsset(id) {
         if (!confirm('Sei sicuro di voler eliminare questo asset dal perimetro?')) return;
         
-        fetch(`/api/assets/${id}`, { method: 'DELETE' })
+        fetch(`/api/assets/${id}`, { method: 'DELETE', credentials: 'include' })
         .then(r => {
             if (r.ok || r.status === 204) {
                 selectedAssetIds.delete(parseInt(id));
