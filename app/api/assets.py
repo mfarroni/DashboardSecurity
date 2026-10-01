@@ -131,12 +131,6 @@ async def update_asset(asset_id: int, asset_update: AssetUpdate, db: Session = D
     return AssetResponse.from_orm(asset)
 
 
-from pydantic import BaseModel
-
-
-class BulkDeleteRequest(BaseModel):
-    asset_ids: List[int]
-
 
 @router.delete("/{asset_id}", status_code=204, dependencies=[Depends(require_role([UserRole.ADMIN]))])
 async def delete_asset(asset_id: int, db: Session = Depends(get_db)):

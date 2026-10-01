@@ -381,6 +381,10 @@ class ProviderResponse(BaseModel):
         from_attributes = True
 
 
+
+class BulkDeleteRequest(BaseModel):
+    asset_ids: List[int]
+
 class IOCEntryResponse(BaseModel):
     id: int
     ioc_type: str
