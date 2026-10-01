@@ -238,7 +238,7 @@ async def get_perimetro_with_vulns(
             html_rows += f'''
             <tr class="table-row border-b border-gray-100 hover:bg-slate-50 cursor-pointer" onclick="handleRowClick(event, {asset.id})">
                 <td class="px-3 py-3 w-10 text-center" onclick="event.stopPropagation()">
-                    <input type="checkbox" class="asset-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="{asset.id}" onchange="handleCheckboxChange(this, {asset.id})">
+                    <input type="checkbox" class="asset-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="{asset.id}" >
                 </td>
                 <td class="px-4 py-3 text-sm font-medium text-gray-900">{asset.vendor} {asset.nome} <span class="text-xs text-gray-500">{asset.versione or ''}</span></td>
                 <td class="px-4 py-3 text-sm text-gray-500 uppercase text-xs">{asset.tipo.value}</td>
