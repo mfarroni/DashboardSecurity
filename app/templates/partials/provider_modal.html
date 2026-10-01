@@ -223,7 +223,7 @@
         .then(p => {
             document.getElementById('prov-edit-id').value = p.id;
             document.getElementById('prov-code').value = p.code;
-            document.getElementById('prov-code').disabled = true;
+            document.getElementById('prov-code').disabled = false;
             document.getElementById('prov-name').value = p.name;
             document.getElementById('prov-api-key').value = p.api_key || '';
             document.getElementById('prov-endpoint').value = p.endpoint_url || '';

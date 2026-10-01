@@ -54,6 +54,11 @@ async def update_provider(provider_id: int, data: dict, db: Session = Depends(ge
     if not provider:
         raise HTTPException(status_code=404, detail="Fornitore non trovato")
     
+    if "code" in data and data["code"] != provider.code:
+        existing = db.query(Provider).filter(Provider.code == data["code"]).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Codice Fornitore già in uso")
+
     for key, value in data.items():
         if hasattr(provider, key) and key != "id":
             setattr(provider, key, value)

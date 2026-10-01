@@ -295,9 +295,21 @@
         const master = document.getElementById('select-all-assets');
         const all = document.querySelectorAll('.asset-checkbox');
         if (master && all.length > 0) {
-            master.checked = (checked.length === all.length);
+            master.checked = (all.length > 0 && checked.length === all.length);
         }
     }
+
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('asset-checkbox')) {
+            updateBulkDeleteBtn();
+        }
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function(e) {
+        if (e.detail && e.detail.target && e.detail.target.id === 'assets-table') {
+            updateBulkDeleteBtn();
+        }
+    });
 
     function deleteAsset(id) {
         if (!confirm('Sei sicuro di voler eliminare questo asset dal perimetro?')) return;

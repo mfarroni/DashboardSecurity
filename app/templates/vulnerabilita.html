@@ -116,17 +116,16 @@
 {% block scripts %}
 <script>
     // Load assets for filter dropdown
-    htmx.ajax('GET', '/api/assets?page_size=500', {
-        target: '#filter-asset',
-        swap: 'innerHTML',
-        handler: (response) => {
-            const data = JSON.parse(response);
-            let html = '<option value="">Tutti</option>';
-            data.items.forEach(a => {
-                html += `<option value="${a.id}">${a.vendor} - ${a.nome}</option>`;
-            });
-            return html;
-        }
+    fetch('/api/assets?page_size=500')
+    .then(r => r.json())
+    .then(data => {
+        const select = document.getElementById('filter-asset');
+        if (!select) return;
+        let html = '<option value="">Tutti</option>';
+        (data.items || []).forEach(a => {
+            html += `<option value="${a.id}">${a.vendor} - ${a.nome}</option>`;
+        });
+        select.innerHTML = html;
     });
 
     function openCveModal(cveId) {

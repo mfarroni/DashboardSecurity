@@ -15,10 +15,6 @@
                     <p class="text-gray-500 mt-1 text-sm">Indici di compromissione unificati e deduplicati con Grado di Attinenza al Perimetro</p>
                 </div>
                 <div class="flex flex-wrap gap-3">
-                    <button onclick="openProviderModal()" 
-                            class="bg-amber-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-amber-700 shadow-sm">
-                        <i class="fas fa-key mr-2"></i>Gestisci Fornitori & API Key
-                    </button>
                     <button id="btn-ioc-bulk-delete" onclick="executeIocBulkDelete()" disabled
                             class="bg-red-600 opacity-50 cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition">
                         <i class="fas fa-trash-alt mr-2"></i>Elimina Selezionati (<span id="ioc-selected-count">0</span>)
@@ -153,8 +149,8 @@
                     <button onclick="executeSyncProviderApi()" class="bg-emerald-600 text-white px-4 py-2 rounded-md text-sm hover:bg-emerald-700">
                         <i class="fas fa-sync mr-2"></i>Interroga Fornitore Ora
                     </button>
-                    <button onclick="openProviderModal()" class="bg-amber-600 text-white px-3 py-2 rounded-md text-sm hover:bg-amber-700">
-                        <i class="fas fa-cog mr-1"></i>Configura API Key
+                    <button onclick="document.getElementById('sync-ioc-modal').classList.add('hidden')" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-400">
+                        Annulla
                     </button>
                 </div>
                 <div id="sync-ioc-result" class="hidden mt-3"></div>
@@ -244,7 +240,24 @@
                 btn.classList.add('opacity-50', 'cursor-not-allowed');
             }
         }
+        const master = document.getElementById('select-all-iocs');
+        const all = document.querySelectorAll('.ioc-checkbox');
+        if (master && all.length > 0) {
+            master.checked = (all.length > 0 && checked.length === all.length);
+        }
     }
+
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('ioc-checkbox')) {
+            updateIocBulkDeleteBtn();
+        }
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function(e) {
+        if (e.detail && e.detail.target && e.detail.target.id === 'ioc-table') {
+            updateIocBulkDeleteBtn();
+        }
+    });
 
     function deleteIoc(id) {
         if (!confirm('Eliminare questo Indice di Compromissione?')) return;
