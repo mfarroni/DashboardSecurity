@@ -1,4 +1,5 @@
 import pytest
+import uuid
 from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 from app.main import app
@@ -177,8 +178,9 @@ def test_provider_management_and_misp_ioc_ingestion():
     cookies = res_login.cookies
 
     # 1. Create Provider with scopes
+    unique_code = f"misp_test_{uuid.uuid4().hex[:6]}"
     p_res = client.post("/api/providers", json={
-        "code": "misp_test_provider",
+        "code": unique_code,
         "name": "Test MISP Provider",
         "description": "Provider per test CTI",
         "scopes": ["MISP_IOC", "FEED_CTI"],
@@ -187,7 +189,7 @@ def test_provider_management_and_misp_ioc_ingestion():
     }, cookies=cookies)
     assert p_res.status_code == 201
     p_data = p_res.json()
-    assert p_data["code"] == "misp_test_provider"
+    assert p_data["code"] == unique_code
     assert "MISP_IOC" in p_data["scopes"]
 
     # 2. List Providers

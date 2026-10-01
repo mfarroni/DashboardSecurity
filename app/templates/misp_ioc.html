@@ -3,6 +3,9 @@
 {% block title %}MISP & IOC Threat Intelligence - Security Dashboard{% endblock %}
 
 {% block content %}
+{% set active_page = 'misp-ioc' %}
+{% include "partials/navbar.html" %}
+
 <div class="min-h-screen bg-gray-50 pb-12">
     <header class="bg-white border-b border-gray-200 py-6 mb-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -12,6 +15,10 @@
                     <p class="text-gray-500 mt-1 text-sm">Indici di compromissione unificati e deduplicati con Grado di Attinenza al Perimetro</p>
                 </div>
                 <div class="flex flex-wrap gap-3">
+                    <button onclick="openProviderModal()" 
+                            class="bg-amber-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-amber-700 shadow-sm">
+                        <i class="fas fa-key mr-2"></i>Gestisci Fornitori & API Key
+                    </button>
                     <button id="btn-ioc-bulk-delete" onclick="executeIocBulkDelete()" disabled
                             class="bg-red-600 opacity-50 cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition">
                         <i class="fas fa-trash-alt mr-2"></i>Elimina Selezionati (<span id="ioc-selected-count">0</span>)
@@ -54,7 +61,7 @@
                     <option value="LOW">Bassa</option>
                 </select>
                 <select id="filter-ioc-min-score" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        hx-get="/api/misp-ioc" hx-target="#assets-table" hx-trigger="change"
+                        hx-get="/api/misp-ioc" hx-target="#ioc-table" hx-trigger="change"
                         hx-include="[id='filter-ioc-type'],[id='filter-ioc-threat'],[id='filter-ioc-search']">
                     <option value="">Tutti i gradi attinenza</option>
                     <option value="100">🔴 Solo 100% (Critico Perimetro)</option>
@@ -146,8 +153,8 @@
                     <button onclick="executeSyncProviderApi()" class="bg-emerald-600 text-white px-4 py-2 rounded-md text-sm hover:bg-emerald-700">
                         <i class="fas fa-sync mr-2"></i>Interroga Fornitore Ora
                     </button>
-                    <button onclick="document.getElementById('sync-ioc-modal').classList.add('hidden')" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-400">
-                        Annulla
+                    <button onclick="openProviderModal()" class="bg-amber-600 text-white px-3 py-2 rounded-md text-sm hover:bg-amber-700">
+                        <i class="fas fa-cog mr-1"></i>Configura API Key
                     </button>
                 </div>
                 <div id="sync-ioc-result" class="hidden mt-3"></div>
@@ -176,11 +183,11 @@
                 <div class="space-y-3">
                     <div class="p-3 bg-red-50 border border-red-200 rounded">
                         <span class="font-bold text-red-800">🔴 100% (CRITICO - Match Diretto):</span>
-                        <p class="text-xs text-red-700 mt-1">L'IoC (IP, Dominio o Hash) è stato rilevato negli eventi **Syslog** attivi o corrisponde all'IP/Nome di un **Asset del Perimetro**.</p>
+                        <p class="text-xs text-red-700 mt-1">L'IoC (IP, Dominio o Hash) è stato rilevato negli eventi Syslog attivi o corrisponde all'IP/Nome di un Asset del Perimetro.</p>
                     </div>
                     <div class="p-3 bg-orange-50 border border-orange-200 rounded">
                         <span class="font-bold text-orange-800">🟠 75% (ALTO - Match Vulnerabilità):</span>
-                        <p class="text-xs text-orange-700 mt-1">L'IoC è associato a una CVE presente in un **Asset del Perimetro**.</p>
+                        <p class="text-xs text-orange-700 mt-1">L'IoC è associato a una CVE presente in un Asset del Perimetro.</p>
                     </div>
                     <div class="p-3 bg-yellow-50 border border-yellow-200 rounded">
                         <span class="font-bold text-yellow-800">🟡 50% (MEDIO - Match Vendor/Sistema):</span>
@@ -193,7 +200,7 @@
                 </div>
 
                 <p class="text-xs text-gray-500 pt-2 border-t">
-                    <i class="fas fa-sliders-h mr-1"></i> I pesi e la logica di calcolo possono essere personalizzati su richiesta nel modulo backend <code>app/services/relevance_calculator.py</code>.
+                    <i class="fas fa-sliders-h mr-1"></i> I pesi e la logica di calcolo possono essere personalizzati nel modulo backend <code>app/services/relevance_calculator.py</code>.
                 </p>
             </div>
             <div class="mt-6 flex justify-end">
@@ -203,6 +210,8 @@
             </div>
         </div>
     </div>
+
+    {% include "partials/provider_modal.html" %}
 </div>
 {% endblock %}
 
@@ -263,6 +272,8 @@
         .then(r => r.json())
         .then(data => {
             alert(`Eliminati ${data.deleted_count || ids.length} IoC.`);
+            const master = document.getElementById('select-all-iocs');
+            if (master) master.checked = false;
             updateIocBulkDeleteBtn();
             htmx.ajax('GET', '/api/misp-ioc', { target: '#ioc-table', swap: 'innerHTML' });
         });
@@ -304,7 +315,7 @@
         .then(data => {
             const select = document.getElementById('sync-provider-select');
             if (data.length === 0) {
-                select.innerHTML = '<option value="">Nessun Fornitore MISP/IOC censito. Aggiungilo dal pannello Admin</option>';
+                select.innerHTML = '<option value="">Nessun Fornitore MISP/IOC censito con API Key. Clicca su Configura API Key</option>';
             } else {
                 select.innerHTML = data.map(p => `<option value="${p.id}">${p.name} (${p.endpoint_url || 'No URL'})</option>`).join('');
             }

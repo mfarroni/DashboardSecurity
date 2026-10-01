@@ -1,0 +1,248 @@
+<div id="provider-management-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+            <div>
+                <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <i class="fas fa-key text-amber-600"></i> Gestione Fornitori & API Key Feed
+                </h2>
+                <p class="text-xs text-gray-500 mt-1">Censimento, modifica ambiti di applicazione e chiavi di accesso API</p>
+            </div>
+            <button onclick="closeProviderModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <div class="p-6 space-y-6">
+            <!-- Add / Edit Form -->
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2" id="provider-form-title">
+                    <i class="fas fa-plus-circle text-blue-600"></i> Inserisci / Modifica Fornitore
+                </h3>
+                <input type="hidden" id="prov-edit-id" value="">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Codice Univoco</label>
+                        <input type="text" id="prov-code" placeholder="es. misp_internal, nvd_official, threatfox" 
+                               class="w-full border border-gray-300 rounded px-3 py-1.5 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Nome Fornitore</label>
+                        <input type="text" id="prov-name" placeholder="es. MISP CIRCL, NVD API Service" 
+                               class="w-full border border-gray-300 rounded px-3 py-1.5 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">API Key / Token Feed</label>
+                        <div class="relative">
+                            <input type="password" id="prov-api-key" placeholder="Inserisci la API Key rilasciata dal servizio" 
+                                   class="w-full border border-gray-300 rounded px-3 py-1.5 text-sm pr-10">
+                            <button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-2 top-2 text-gray-500 hover:text-gray-700">
+                                <i id="eye-icon" class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Endpoint URL API (opzionale)</label>
+                        <input type="url" id="prov-endpoint" placeholder="https://misp.example.com/events/restSearch" 
+                               class="w-full border border-gray-300 rounded px-3 py-1.5 text-sm">
+                    </div>
+                </div>
+
+                <!-- Ambiti Checkboxes -->
+                <div class="mt-3">
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Ambiti di Applicazione (Seleziona tutti i pertinenti):</label>
+                    <div class="flex flex-wrap gap-4 text-xs">
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="checkbox" id="scope-vuln" value="VULNERABILITY" class="prov-scope-cb rounded text-blue-600">
+                            <span class="font-medium text-gray-800">Vulnerabilità (NVD / CVE)</span>
+                        </label>
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="checkbox" id="scope-feed" value="FEED_CTI" class="prov-scope-cb rounded text-blue-600">
+                            <span class="font-medium text-gray-800">Feed CTI (Notizie / Alert)</span>
+                        </label>
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="checkbox" id="scope-syslog" value="SYSLOG" class="prov-scope-cb rounded text-blue-600">
+                            <span class="font-medium text-gray-800">Syslog (Log Eventi)</span>
+                        </label>
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="checkbox" id="scope-misp" value="MISP_IOC" class="prov-scope-cb rounded text-blue-600" checked>
+                            <span class="font-medium text-gray-800">MISP / IOC (Indici Compromissione)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex gap-2 justify-end">
+                    <button type="button" onclick="resetProviderForm()" class="px-3 py-1.5 border rounded text-xs text-gray-600 hover:bg-gray-100">
+                        Annulla
+                    </button>
+                    <button type="button" onclick="saveProvider()" class="px-4 py-1.5 bg-blue-600 text-white rounded text-xs font-semibold hover:bg-blue-700">
+                        <i class="fas fa-save mr-1"></i>Salva Fornitore
+                    </button>
+                </div>
+            </div>
+
+            <!-- Existing Providers Table -->
+            <div>
+                <h3 class="text-sm font-bold text-gray-800 mb-3">Fornitori Registrati</h3>
+                <div class="overflow-x-auto border rounded-lg">
+                    <table class="w-full text-xs">
+                        <thead class="bg-gray-100 border-b">
+                            <tr>
+                                <th class="px-3 py-2 text-left">Codice</th>
+                                <th class="px-3 py-2 text-left">Nome Fornitore</th>
+                                <th class="px-3 py-2 text-left">Ambiti</th>
+                                <th class="px-3 py-2 text-left">API Key</th>
+                                <th class="px-3 py-2 text-left">Endpoint URL</th>
+                                <th class="px-3 py-2 text-right">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="providers-list-table" class="divide-y divide-gray-200">
+                            <tr><td colspan="6" class="p-4 text-center text-gray-500">Caricamento fornitori...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openProviderModal() {
+        document.getElementById('provider-management-modal').classList.remove('hidden');
+        loadProvidersList();
+    }
+
+    function closeProviderModal() {
+        document.getElementById('provider-management-modal').classList.add('hidden');
+        resetProviderForm();
+    }
+
+    function toggleApiKeyVisibility() {
+        const input = document.getElementById('prov-api-key');
+        const icon = document.getElementById('eye-icon');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+
+    function resetProviderForm() {
+        document.getElementById('prov-edit-id').value = '';
+        document.getElementById('prov-code').value = '';
+        document.getElementById('prov-code').disabled = false;
+        document.getElementById('prov-name').value = '';
+        document.getElementById('prov-api-key').value = '';
+        document.getElementById('prov-endpoint').value = '';
+        document.querySelectorAll('.prov-scope-cb').forEach(cb => cb.checked = false);
+        document.getElementById('scope-misp').checked = true;
+        document.getElementById('provider-form-title').innerHTML = '<i class="fas fa-plus-circle text-blue-600"></i> Inserisci Nuovo Fornitore';
+    }
+
+    function loadProvidersList() {
+        fetch('/api/providers')
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('providers-list-table');
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500">Nessun fornitore censito</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map(p => {
+                const scopesBadges = (p.scopes || []).map(s => `<span class="px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-800 font-semibold mr-1">${s}</span>`).join('');
+                const keyMasked = p.api_key ? `<span class="font-mono text-gray-600">••••${p.api_key.slice(-4)}</span>` : '<span class="text-gray-400 font-italic">Non configurata</span>';
+                return `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-3 py-2 font-mono font-bold text-gray-800">${p.code}</td>
+                    <td class="px-3 py-2 font-medium text-gray-900">${p.name}</td>
+                    <td class="px-3 py-2">${scopesBadges}</td>
+                    <td class="px-3 py-2">${keyMasked}</td>
+                    <td class="px-3 py-2 font-mono text-gray-500 truncate max-w-[150px]">${p.endpoint_url || '-'}</td>
+                    <td class="px-3 py-2 text-right">
+                        <button onclick="editProviderObj(${p.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="Modifica"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteProviderObj(${p.id})" class="text-red-600 hover:text-red-800" title="Elimina"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+        });
+    }
+
+    function saveProvider() {
+        const id = document.getElementById('prov-edit-id').value;
+        const code = document.getElementById('prov-code').value.trim();
+        const name = document.getElementById('prov-name').value.trim();
+        const apiKey = document.getElementById('prov-api-key').value.trim();
+        const endpoint = document.getElementById('prov-endpoint').value.trim();
+        
+        const scopes = Array.from(document.querySelectorAll('.prov-scope-cb:checked')).map(cb => cb.value);
+
+        if (!code || !name) {
+            alert('Inserisci Codice e Nome del Fornitore');
+            return;
+        }
+        if (scopes.length === 0) {
+            alert('Seleziona almeno un ambito per il fornitore');
+            return;
+        }
+
+        const payload = {
+            code: code,
+            name: name,
+            scopes: scopes,
+            api_key: apiKey || null,
+            endpoint_url: endpoint || null
+        };
+
+        const method = id ? 'PATCH' : 'POST';
+        const url = id ? `/api/providers/${id}` : '/api/providers';
+
+        fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(async r => {
+            if (!r.ok) {
+                const err = await r.json();
+                alert('Errore salvataggio: ' + (err.detail || 'Impossibile completare'));
+                return;
+            }
+            alert(id ? 'Fornitore aggiornato con successo' : 'Fornitore creato con successo');
+            resetProviderForm();
+            loadProvidersList();
+        })
+        .catch(err => alert('Errore di connessione: ' + err));
+    }
+
+    function editProviderObj(id) {
+        fetch(`/api/providers/${id}`)
+        .then(r => r.json())
+        .then(p => {
+            document.getElementById('prov-edit-id').value = p.id;
+            document.getElementById('prov-code').value = p.code;
+            document.getElementById('prov-code').disabled = true;
+            document.getElementById('prov-name').value = p.name;
+            document.getElementById('prov-api-key').value = p.api_key || '';
+            document.getElementById('prov-endpoint').value = p.endpoint_url || '';
+            document.querySelectorAll('.prov-scope-cb').forEach(cb => {
+                cb.checked = (p.scopes || []).includes(cb.value);
+            });
+            document.getElementById('provider-form-title').innerHTML = `<i class="fas fa-edit text-blue-600"></i> Modifica Fornitore '${p.name}'`;
+        });
+    }
+
+    function deleteProviderObj(id) {
+        if (!confirm('Eliminare questo fornitore?')) return;
+        fetch(`/api/providers/${id}`, { method: 'DELETE' })
+        .then(r => {
+            if (r.ok || r.status === 204) {
+                loadProvidersList();
+            } else {
+                alert('Errore durante l\'eliminazione');
+            }
+        });
+    }
+</script>

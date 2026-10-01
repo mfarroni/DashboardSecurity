@@ -4,47 +4,21 @@
 
 {% block content %}
 <div class="min-h-screen bg-slate-50">
-    <!-- Navigation Bar -->
-    <nav class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16 items-center">
-                <div class="flex items-center space-x-3">
-                    <div class="bg-blue-600 text-white p-2 rounded-lg font-bold text-lg shadow-sm">
-                        <i class="fas fa-shield-alt"></i>
-                    </div>
-                    <a href="/" class="text-xl font-bold tracking-tight text-white hover:text-blue-300 transition">Security Dashboard</a>
-                    <span class="text-slate-500">/</span>
-                    <span class="text-blue-400 font-medium">Gestione Admin</span>
-                </div>
-                <div class="flex items-center space-x-5">
-                    <a href="/perimetro" class="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">Perimetro</a>
-                    <a href="/vulnerabilita" class="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">Vulnerabilità</a>
-                    <a href="/feed" class="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">Feed CTI</a>
-                    <a href="/syslog" class="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">Syslog</a>
-                    
-                    {% if current_user %}
-                    <div class="flex items-center space-x-3 border-l border-slate-700 pl-4">
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-900/80 text-purple-200 border border-purple-600">
-                            <i class="fas fa-user-shield mr-1.5"></i>{{ current_user.username }} ({{ current_user.role.value }})
-                        </span>
-                        <a href="/api/auth/logout" class="bg-red-600/80 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-md font-medium transition shadow-sm">
-                            <i class="fas fa-sign-out-alt mr-1"></i>Esci
-                        </a>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </nav>
+{% set active_page = 'admin' %}
+{% include "partials/navbar.html" %}
 
     <!-- Main Body -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
             <div>
                 <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Pannello Amministrazione</h1>
-                <p class="text-slate-600 mt-1">Gestisci i collaboratori, le autorizzazioni e la Rubrica delle Fonti dinamica (CVE / Feed / IoC)</p>
+                <p class="text-slate-600 mt-1">Gestisci i collaboratori, le autorizzazioni, i Fornitori e le API Key per i Feed</p>
             </div>
             <div class="flex gap-3">
+                <button onclick="openProviderModal()" 
+                        class="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-4 py-2.5 rounded-lg shadow-sm text-sm transition">
+                    <i class="fas fa-key mr-2"></i>Gestisci Fornitori & API Key
+                </button>
                 <button onclick="document.getElementById('new-user-modal').classList.remove('hidden')" 
                         class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2.5 rounded-lg shadow-sm text-sm transition">
                     <i class="fas fa-user-plus mr-2"></i>Nuovo Collaboratore
@@ -260,6 +234,7 @@
         </form>
     </div>
 </div>
+{% include "partials/provider_modal.html" %}
 {% endblock %}
 
 {% block scripts %}
