@@ -54,3 +54,17 @@ def calculate_ioc_relevance(db: Session, ioc_type: str, value: str, raw_data: Op
 
     # 4. Default 0%
     return (0.0, "⚪ BASSO - Nessun riscontro rilevato con perimetro, log o vulnerabilità censite")
+
+
+class RelevanceCalculator:
+    def calculate_relevance(self, db: Session, ioc_type: str, value: str, tags: Optional[list] = None) -> Tuple[float, str, Optional[str]]:
+        score, reason = calculate_ioc_relevance(db, ioc_type, value)
+        asset_name = None
+        if "Match Diretto Asset" in reason or "vulnerabilità attiva" in reason:
+            asset_match = db.query(Asset).filter(or_(Asset.nome.ilike(value.strip()), Asset.cpe == value.strip())).first()
+            if asset_match:
+                asset_name = f"{asset_match.vendor} {asset_match.nome}"
+        return score, reason, asset_name
+
+
+relevance_calculator = RelevanceCalculator()

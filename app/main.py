@@ -8,7 +8,8 @@ import uvicorn
 from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.database import init_db
-from app.api import assets, feed, cve, dashboard, syslog, imports, auth, settings as settings_api, providers, misp_ioc
+from app.api import assets, feed, cve, dashboard, syslog, imports, auth, settings as settings_api, providers, misp_ioc, reports
+from app.services.fetcher import fetcher
 
 
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50 MB limit
@@ -29,8 +30,9 @@ async def lifespan(app: FastAPI):
     # Register background periodic sync jobs
     try:
         scheduler.add_job(sync_worker.run_nvd_sync, 'interval', hours=settings.nvd_sync_interval_hours, kwargs={'days': 1})
+        scheduler.add_job(fetcher.execute_scheduled_fetch, 'interval', hours=24)
         scheduler.start()
-        print(f"APScheduler background sync service started (NVD sync interval: {settings.nvd_sync_interval_hours}h)")
+        print(f"APScheduler background sync & fetcher service started")
     except Exception as e:
         print(f"APScheduler startup warning: {e}")
         
@@ -90,6 +92,7 @@ app.include_router(imports.router, prefix="/api/import", tags=["Import"])
 app.include_router(settings_api.router, prefix="/api/settings", tags=["Settings"])
 app.include_router(providers.router, prefix="/api/providers", tags=["Providers"])
 app.include_router(misp_ioc.router, prefix="/api/misp-ioc", tags=["MISP/IOC"])
+app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 
 
 @app.get("/health")

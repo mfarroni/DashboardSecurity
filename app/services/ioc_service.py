@@ -214,3 +214,31 @@ def process_ioc_file_import(db: Session, content_bytes: bytes, filename: str, pr
                 errors.append(f"Errore riga '{val}': {str(e)}")
 
     return imported, failed, errors
+
+
+class IOCService:
+    def list_iocs(self, db: Session, limit: int = 500) -> List[IOCEntry]:
+        return db.query(IOCEntry).order_by(IOCEntry.relevance_score.desc()).limit(limit).all()
+
+    def ingest_ioc_batch(self, db: Session, records: List[Dict[str, Any]], provider_name: str) -> int:
+        imported = 0
+        for rec in records:
+            val = rec.get("value") or rec.get("ioc") or rec.get("indicator")
+            if not val:
+                continue
+            ioc_tp = detect_ioc_type(str(val))
+            upsert_ioc_entry(
+                db,
+                ioc_type=ioc_tp,
+                value=str(val),
+                provider_name=provider_name,
+                description=rec.get("description"),
+                threat_level=rec.get("threat_level", "MEDIUM"),
+                tags=rec.get("tags", []),
+                raw_data=rec.get("raw")
+            )
+            imported += 1
+        return imported
+
+
+ioc_service = IOCService()
