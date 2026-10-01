@@ -236,18 +236,18 @@ async def get_perimetro_with_vulns(
             cpe_val = f'<code class="text-xs text-gray-600 bg-gray-100 px-1 py-0.5 rounded">{asset.cpe}</code>' if asset.cpe else '<span class="text-xs text-gray-400">-</span>'
             vuln_badge = f'<span class="badge-critical px-2 py-0.5 rounded text-xs">{item.critical_count + item.high_count} critiche</span>' if (item.critical_count + item.high_count) > 0 else '<span class="text-xs text-green-600">OK</span>'
             html_rows += f'''
-            <tr class="table-row border-b border-gray-100">
-                <td class="px-3 py-3 w-10 text-center">
-                    <input type="checkbox" class="asset-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="{asset.id}" onchange="updateBulkDeleteBtn()">
+            <tr class="table-row border-b border-gray-100 hover:bg-slate-50 cursor-pointer" onclick="handleRowClick(event, {asset.id})">
+                <td class="px-3 py-3 w-10 text-center" onclick="event.stopPropagation()">
+                    <input type="checkbox" class="asset-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="{asset.id}" onchange="handleCheckboxChange(this, {asset.id})">
                 </td>
                 <td class="px-4 py-3 text-sm font-medium text-gray-900">{asset.vendor} {asset.nome} <span class="text-xs text-gray-500">{asset.versione or ''}</span></td>
                 <td class="px-4 py-3 text-sm text-gray-500 uppercase text-xs">{asset.tipo.value}</td>
                 <td class="px-4 py-3 text-sm text-gray-500">{crit_badge}</td>
                 <td class="px-4 py-3 text-sm text-gray-500">{cpe_val}</td>
                 <td class="px-4 py-3 text-sm text-gray-500">{vuln_badge}</td>
-                <td class="px-4 py-3 text-sm text-right">
-                    <button onclick="editAsset({asset.id})" class="text-blue-600 hover:text-blue-800 text-xs mr-2" title="Modifica"><i class="fas fa-edit"></i></button>
-                    <button onclick="deleteAsset({asset.id})" class="text-red-600 hover:text-red-800 text-xs" title="Elimina"><i class="fas fa-trash"></i></button>
+                <td class="px-4 py-3 text-sm text-right" onclick="event.stopPropagation()">
+                    <button onclick="editAsset({asset.id}); event.stopPropagation();" class="text-blue-600 hover:text-blue-800 text-xs mr-2" title="Modifica"><i class="fas fa-edit"></i></button>
+                    <button onclick="deleteAsset({asset.id}); event.stopPropagation();" class="text-red-600 hover:text-red-800 text-xs" title="Elimina"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>
             '''
