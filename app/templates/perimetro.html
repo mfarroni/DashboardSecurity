@@ -268,22 +268,75 @@
         .catch(err => alert('Errore di connessione: ' + err));
     }
 
-    // Selection & Bulk Actions
-    function toggleSelectAllAssets(master) {
-        const checkboxes = document.querySelectorAll('.asset-checkbox');
-        checkboxes.forEach(cb => cb.checked = master.checked);
+    // Selection & Bulk Actions State (Unlimited, random order selection)
+    const selectedAssetIds = new Set();
+
+    function handleCheckboxChange(cb, assetId) {
+        const id = parseInt(assetId);
+        if (cb.checked) {
+            selectedAssetIds.add(id);
+        } else {
+            selectedAssetIds.delete(id);
+        }
         updateBulkDeleteBtn();
     }
 
+    function handleRowClick(event, assetId) {
+        // Prevent row toggle if clicking directly on buttons, links or inputs
+        const target = event.target;
+        if (target.closest('button') || target.closest('a') || target.tagName === 'INPUT' || target.tagName === 'I') {
+            return;
+        }
+        const id = parseInt(assetId);
+        const cb = document.querySelector(`.asset-checkbox[value="${id}"]`);
+        if (cb) {
+            cb.checked = !cb.checked;
+            handleCheckboxChange(cb, id);
+        }
+    }
+
+    function toggleSelectAllAssets(master) {
+        const checkboxes = document.querySelectorAll('.asset-checkbox');
+        checkboxes.forEach(cb => {
+            const id = parseInt(cb.value);
+            cb.checked = master.checked;
+            if (master.checked) {
+                selectedAssetIds.add(id);
+            } else {
+                selectedAssetIds.delete(id);
+            }
+        });
+        updateBulkDeleteBtn();
+    }
+
+    function syncCheckboxesFromState() {
+        const checkboxes = document.querySelectorAll('.asset-checkbox');
+        let visibleCheckedCount = 0;
+        checkboxes.forEach(cb => {
+            const id = parseInt(cb.value);
+            if (selectedAssetIds.has(id)) {
+                cb.checked = true;
+                visibleCheckedCount++;
+            } else {
+                cb.checked = false;
+            }
+        });
+        const master = document.getElementById('select-all-assets');
+        if (master && checkboxes.length > 0) {
+            master.checked = (visibleCheckedCount === checkboxes.length);
+        }
+    }
+
     function updateBulkDeleteBtn() {
-        const checked = document.querySelectorAll('.asset-checkbox:checked');
+        syncCheckboxesFromState();
+        const count = selectedAssetIds.size;
         const btn = document.getElementById('btn-bulk-delete');
         const countSpan = document.getElementById('selected-count');
         
-        if (countSpan) countSpan.textContent = checked.length;
+        if (countSpan) countSpan.textContent = count;
         
         if (btn) {
-            if (checked.length > 0) {
+            if (count > 0) {
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
             } else {
@@ -291,19 +344,7 @@
                 btn.classList.add('opacity-50', 'cursor-not-allowed');
             }
         }
-        
-        const master = document.getElementById('select-all-assets');
-        const all = document.querySelectorAll('.asset-checkbox');
-        if (master && all.length > 0) {
-            master.checked = (all.length > 0 && checked.length === all.length);
-        }
     }
-
-    document.addEventListener('change', function(e) {
-        if (e.target && e.target.classList.contains('asset-checkbox')) {
-            updateBulkDeleteBtn();
-        }
-    });
 
     document.body.addEventListener('htmx:afterSwap', function(e) {
         if (e.detail && e.detail.target && e.detail.target.id === 'assets-table') {
@@ -317,6 +358,8 @@
         fetch(`/api/assets/${id}`, { method: 'DELETE' })
         .then(r => {
             if (r.ok || r.status === 204) {
+                selectedAssetIds.delete(parseInt(id));
+                updateBulkDeleteBtn();
                 htmx.ajax('GET', '/api/perimetro', { target: '#assets-table', swap: 'innerHTML' });
             } else {
                 alert('Errore durante l\'eliminazione dell\'asset.');
@@ -326,12 +369,11 @@
     }
 
     function executeBulkDelete() {
-        const checked = document.querySelectorAll('.asset-checkbox:checked');
-        const ids = Array.from(checked).map(cb => parseInt(cb.value));
+        const ids = Array.from(selectedAssetIds);
         
         if (ids.length === 0) return;
         
-        if (!confirm(`Sei sicuro di voler eliminare ${ids.length} asset dal perimetro?`)) return;
+        if (!confirm(`Sei sicuro di voler eliminare i ${ids.length} asset selezionati dal perimetro?`)) return;
         
         fetch('/api/assets/bulk-delete', {
             method: 'POST',
@@ -340,7 +382,8 @@
         })
         .then(r => r.json())
         .then(data => {
-            alert(`Eliminati ${data.deleted_count || ids.length} asset.`);
+            alert(`Eliminati ${data.deleted_count || ids.length} asset dal perimetro.`);
+            selectedAssetIds.clear();
             const master = document.getElementById('select-all-assets');
             if (master) master.checked = false;
             updateBulkDeleteBtn();
