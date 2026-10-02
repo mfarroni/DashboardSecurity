@@ -371,7 +371,7 @@
                 updateBulkDeleteBtn();
                 htmx.ajax('GET', '/api/perimetro', { target: '#assets-table', swap: 'innerHTML' });
             } else {
-                alert('Errore durante l'eliminazione dell'asset.');
+                alert('Errore durante l\'eliminazione dell\'asset.');
             }
         })
         .catch(err => alert('Errore di connessione: ' + err));
@@ -399,7 +399,7 @@
             updateBulkDeleteBtn();
             htmx.ajax('GET', '/api/perimetro', { target: '#assets-table', swap: 'innerHTML' });
         })
-        .catch(err => alert('Errore durante l'eliminazione massiva: ' + err));
+        .catch(err => alert('Errore durante l\'eliminazione massiva: ' + err));
     }
 
     // Close modal on Escape

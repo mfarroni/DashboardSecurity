@@ -12,7 +12,8 @@ from app.models.models import Asset, ImportBatch, AssetType, AssetCriticality, U
 from app.api.deps import require_role
 from app.schemas.schemas import (
     AssetResponse, AssetCreate, AssetUpdate, AssetImportRow,
-    ImportBatchResponse, ImportPreviewResponse, PaginatedResponse
+    ImportBatchResponse, ImportPreviewResponse, PaginatedResponse,
+    BulkDeleteRequest
 )
 
 router = APIRouter()
