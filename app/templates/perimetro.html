@@ -161,7 +161,9 @@
         const formData = new FormData();
         formData.append('file', file);
 
-        fetch('/api/assets/import/preview', { method: 'POST', credentials: 'include' }),
+        fetch('/api/assets/import/preview', {
+            method: 'POST',
+            credentials: 'include',
             body: formData
         })
         .then(async r => {
@@ -235,7 +237,9 @@
         formData.append('file', file);
         formData.append('mapping', JSON.stringify(mapping));
 
-        fetch('/api/assets/import/execute', { method: 'POST', credentials: 'include' }),
+        fetch('/api/assets/import/execute', {
+            method: 'POST',
+            credentials: 'include',
             body: formData
         })
         .then(async r => {
